@@ -35,6 +35,8 @@ npm-debug.log*
 # Test results
 TestResults/
 coverage/
+playwright-report/
+test-results/
 
 # Environment
 .env
