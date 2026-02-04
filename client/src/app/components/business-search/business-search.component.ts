@@ -1,4 +1,4 @@
-import { Component, inject, signal, output, DestroyRef, input, effect } from '@angular/core';
+import { Component, inject, signal, output, DestroyRef, input, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -117,13 +117,14 @@ export class BusinessSearchComponent {
   private searchSubject = new Subject<string>();
 
   constructor() {
-    // Effect to clear search when reset is triggered
+    // Effect to clear search when reset is triggered.
+    // Uses allowSignalWrites because clear() writes to signals.
     effect(() => {
       const trigger = this.resetTrigger();
       if (trigger > 0) {
-        this.clear();
+        untracked(() => this.clear());
       }
-    });
+    }, { allowSignalWrites: true });
 
     // RxJS pipeline ONLY because we need debounceTime
     // Signals don't have built-in debounce capability
@@ -173,5 +174,8 @@ export class BusinessSearchComponent {
   clear(): void {
     this.searchTerm.set('');
     this.searchResults.set([]);
+    // Push empty string to reset distinctUntilChanged state,
+    // so re-searching the same term works after reset
+    this.searchSubject.next('');
   }
 }

@@ -493,6 +493,7 @@ export class QuoteFormComponent {
   private allDynamicFieldValues = signal<Map<string, Record<string, any>>>(new Map());
   private allRiskFactors = signal<Map<string, RiskFactor[]>>(new Map());
   private allCoverageFormValues = signal<Map<string, Record<string, any>>>(new Map());
+  private allBusinessFormValues = signal<Map<string, Record<string, any>>>(new Map());
 
   private defaultCoverageValues(): Record<string, any> {
     return {
@@ -594,12 +595,17 @@ export class QuoteFormComponent {
   }
 
   onBusinessSelected(business: Business): void {
-    // Save current business's coverage form values before switching
+    // Save current business's form values before switching
     const previousBusinessId = this.currentBusinessId();
     if (previousBusinessId) {
       this.allCoverageFormValues.update(allValues => {
         const newMap = new Map(allValues);
         newMap.set(previousBusinessId, { ...this.coverageForm.value });
+        return newMap;
+      });
+      this.allBusinessFormValues.update(allValues => {
+        const newMap = new Map(allValues);
+        newMap.set(previousBusinessId, { ...this.businessForm.value });
         return newMap;
       });
     }
@@ -610,24 +616,30 @@ export class QuoteFormComponent {
     const businessId = business.taxId || business.businessName;
     this.currentBusinessId.set(businessId);
 
-    // Calculate years in business from dateEstablished
-    let yearsInBusiness = 5; // default
-    if (business.dateEstablished) {
-      const established = new Date(business.dateEstablished);
-      const now = new Date();
-      yearsInBusiness = Math.max(1, Math.floor((now.getTime() - established.getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
-    }
+    // Restore saved business form values, or populate from API data
+    const savedBusinessForm = this.allBusinessFormValues().get(businessId);
+    if (savedBusinessForm) {
+      this.businessForm.patchValue(savedBusinessForm);
+    } else {
+      // Calculate years in business from dateEstablished
+      let yearsInBusiness = 5; // default
+      if (business.dateEstablished) {
+        const established = new Date(business.dateEstablished);
+        const now = new Date();
+        yearsInBusiness = Math.max(1, Math.floor((now.getTime() - established.getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
+      }
 
-    this.businessForm.patchValue({
-      businessName: business.businessName,
-      taxId: business.taxId,
-      businessType: business.businessType,
-      stateCode: business.stateCode,
-      yearsInBusiness: yearsInBusiness,
-      employeeCount: business.employeeCount ?? 10,
-      annualRevenue: business.annualRevenue ?? 500000,
-      annualPayroll: business.annualPayroll ?? 300000
-    });
+      this.businessForm.patchValue({
+        businessName: business.businessName,
+        taxId: business.taxId,
+        businessType: business.businessType,
+        stateCode: business.stateCode,
+        yearsInBusiness: yearsInBusiness,
+        employeeCount: business.employeeCount ?? 10,
+        annualRevenue: business.annualRevenue ?? 500000,
+        annualPayroll: business.annualPayroll ?? 300000
+      });
+    }
 
     // Initialize dynamic field values for this business (only if not already set)
     const allValues = this.allDynamicFieldValues();
@@ -720,19 +732,31 @@ export class QuoteFormComponent {
     // Clear current quote
     this.quoteService.clearCurrentQuote();
 
-    // Save coverage form values before reset (product type, limits, etc.)
-    const savedCoverage = { ...this.coverageForm.value };
+    // Save current business's form values before resetting
+    const previousBusinessId = this.currentBusinessId();
+    if (previousBusinessId) {
+      this.allBusinessFormValues.update(allValues => {
+        const newMap = new Map(allValues);
+        newMap.set(previousBusinessId, { ...this.businessForm.value });
+        return newMap;
+      });
+      this.allCoverageFormValues.update(allValues => {
+        const newMap = new Map(allValues);
+        newMap.set(previousBusinessId, { ...this.coverageForm.value });
+        return newMap;
+      });
+    }
 
-    // Only reset business form, keep coverage options
+    // Reset forms to defaults
     this.businessForm.reset({
       yearsInBusiness: 5,
       employeeCount: 10,
       annualRevenue: 500000,
       annualPayroll: 300000
     });
+    this.coverageForm.patchValue(this.defaultCoverageValues());
 
     // Reset selected business and current business ID
-    // This will make dynamicFieldValues and riskFactors return default/empty values
     this.selectedBusiness.set(null);
     this.currentBusinessId.set(null);
 
@@ -740,11 +764,8 @@ export class QuoteFormComponent {
     this.searchResetTrigger.update(n => n + 1);
     this.riskFactorsResetTrigger.update(n => n + 1);
 
-    // Go back to first step without resetting all forms
+    // Go back to first step
     this.stepper.selectedIndex = 0;
-
-    // Restore coverage form values (product type, limits, deductible, etc.)
-    this.coverageForm.patchValue(savedCoverage);
   }
 
   hasUnsavedChanges(): boolean {

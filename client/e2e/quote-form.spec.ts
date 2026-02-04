@@ -234,6 +234,67 @@ test.describe('Business Data Isolation', () => {
   });
 });
 
+test.describe('Business Info Persistence', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+  });
+
+  test('Edited business fields should persist when switching back', async ({ page }) => {
+    test.setTimeout(60000);
+
+    // Select Pacific and edit Years in Business and Employee Count
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+
+    const yearsInput = page.locator('input[formControlName="yearsInBusiness"]');
+    const employeeInput = page.locator('input[formControlName="employeeCount"]');
+
+    // Save original values for reference
+    const originalYears = await yearsInput.inputValue();
+    console.log(`Pacific original Years in Business: ${originalYears}`);
+
+    // Change values
+    await yearsInput.fill('25');
+    await employeeInput.fill('99');
+    await page.waitForTimeout(300);
+
+    // Switch to Lone Star
+    await selectBusiness(page, 'Lone', 'Lone Star Auto Repair');
+    await page.waitForTimeout(300);
+
+    // Verify Lone Star has its own values (not Pacific's edits)
+    await expect(employeeInput).not.toHaveValue('99');
+
+    // Switch back to Pacific
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+    await page.waitForTimeout(300);
+
+    // Verify Pacific's edited values are restored
+    await expect(yearsInput).toHaveValue('25');
+    await expect(employeeInput).toHaveValue('99');
+  });
+
+  test('Annual Revenue edits should not leak between businesses', async ({ page }) => {
+    test.setTimeout(60000);
+
+    // Select Pacific and change Annual Revenue
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+
+    const revenueInput = page.locator('input[formControlName="annualRevenue"]');
+    await revenueInput.fill('9999999');
+    await page.waitForTimeout(300);
+
+    // Switch to Lone Star
+    await selectBusiness(page, 'Lone', 'Lone Star Auto Repair');
+
+    // Lone Star should NOT have Pacific's revenue
+    await expect(revenueInput).not.toHaveValue('9999999');
+
+    // Switch back to Pacific — should restore edited value
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+    await expect(revenueInput).toHaveValue('9999999');
+  });
+});
+
 test.describe('Coverage Tab Field Persistence', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -313,5 +374,66 @@ test.describe('Quote Submission', () => {
 
     // Verify quote result is shown
     await expect(page.locator('app-quote-result')).toBeVisible();
+  });
+
+  test('Business Info edits should persist after Start New Quote and re-select', async ({ page }) => {
+    test.setTimeout(90000);
+
+    // Select Pacific and edit fields
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+    await page.locator('input[formControlName="yearsInBusiness"]').fill('25');
+    await page.locator('input[formControlName="employeeCount"]').fill('99');
+    await page.waitForTimeout(300);
+
+    // Submit quote
+    await goToStep(page, 'Coverage');
+    await goToStep(page, 'Risk Factors');
+    await goToStep(page, 'Review');
+    await page.locator('button:has-text("Get Final Quote")').click();
+    await page.waitForTimeout(3000);
+    await expect(page.locator('app-quote-result')).toBeVisible();
+
+    // Click Start New Quote
+    await page.locator('button:has-text("Start New Quote")').click();
+    await page.waitForTimeout(500);
+
+    // Re-select Pacific
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+
+    // Verify edits were preserved
+    await expect(page.locator('input[formControlName="yearsInBusiness"]')).toHaveValue('25');
+    await expect(page.locator('input[formControlName="employeeCount"]')).toHaveValue('99');
+  });
+
+  test('Coverage edits should persist after Start New Quote and re-select', async ({ page }) => {
+    test.setTimeout(90000);
+
+    // Select Pacific and edit coverage
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+    await goToStep(page, 'Coverage');
+    await page.locator('mat-select[formControlName="coverageLimit"]').click();
+    await page.locator('mat-option', { hasText: '$2,000,000' }).click();
+    await page.locator('mat-select[formControlName="deductible"]').click();
+    await page.locator('mat-option', { hasText: '$5,000' }).click();
+    await page.waitForTimeout(300);
+
+    // Submit quote
+    await goToStep(page, 'Risk Factors');
+    await goToStep(page, 'Review');
+    await page.locator('button:has-text("Get Final Quote")').click();
+    await page.waitForTimeout(3000);
+    await expect(page.locator('app-quote-result')).toBeVisible();
+
+    // Click Start New Quote
+    await page.locator('button:has-text("Start New Quote")').click();
+    await page.waitForTimeout(500);
+
+    // Re-select Pacific
+    await selectBusiness(page, 'Pacific', 'Pacific Coast Brewing');
+    await goToStep(page, 'Coverage');
+
+    // Verify coverage edits were preserved
+    await expect(page.locator('mat-select[formControlName="coverageLimit"]')).toContainText('$2,000,000');
+    await expect(page.locator('mat-select[formControlName="deductible"]')).toContainText('$5,000');
   });
 });
