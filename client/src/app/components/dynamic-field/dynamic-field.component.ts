@@ -11,11 +11,7 @@ import { FormFieldConfig } from '../../models/form-field.model';
 
 /**
  * Dynamic form field component - renders different input types based on config.
- *
- * INTERVIEW TALKING POINTS:
- * - Uses signal-based input() and output()
- * - @switch for type-based rendering
- * - Reusable for any form configuration
+ * Uses one-way data flow: parent passes value via [value], child emits changes via (valueChange).
  */
 @Component({
   selector: 'app-dynamic-field',
@@ -39,10 +35,10 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <input
             matInput
             type="text"
-            [value]="value()"
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
             [placeholder]="config().placeholder ?? ''"
-            [required]="config().required"
-            (input)="onInput($event)">
+            [required]="config().required">
           @if (config().hint) {
             <mat-hint>{{ config().hint }}</mat-hint>
           }
@@ -55,12 +51,12 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <input
             matInput
             type="number"
-            [value]="value()"
-            [min]="config().min"
-            [max]="config().max"
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [min]="config().min ?? null"
+            [max]="config().max ?? null"
             [step]="config().step ?? 1"
-            [required]="config().required"
-            (input)="onNumberInput($event)">
+            [required]="config().required">
           @if (config().hint) {
             <mat-hint>{{ config().hint }}</mat-hint>
           }
@@ -74,11 +70,11 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <input
             matInput
             type="number"
-            [value]="value()"
-            [min]="config().min"
-            [max]="config().max"
-            [required]="config().required"
-            (input)="onNumberInput($event)">
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [min]="config().min ?? 0"
+            [max]="config().max ?? null"
+            [required]="config().required">
           @if (config().hint) {
             <mat-hint>{{ config().hint }}</mat-hint>
           }
@@ -89,9 +85,9 @@ import { FormFieldConfig } from '../../models/form-field.model';
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>{{ config().label }}</mat-label>
           <mat-select
-            [value]="value()"
-            [required]="config().required"
-            (selectionChange)="onChange($event.value)">
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [required]="config().required">
             @for (opt of config().options; track opt.value) {
               <mat-option [value]="opt.value" [disabled]="opt.disabled">
                 {{ opt.label }}
@@ -106,9 +102,9 @@ import { FormFieldConfig } from '../../models/form-field.model';
 
       @case ('checkbox') {
         <mat-checkbox
-          [checked]="value()"
-          [required]="config().required"
-          (change)="onChange($event.checked)">
+          [ngModel]="value()"
+          (ngModelChange)="valueChange.emit($event)"
+          [required]="config().required">
           {{ config().label }}
         </mat-checkbox>
         @if (config().hint) {
@@ -122,9 +118,9 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <input
             matInput
             [matDatepicker]="picker"
-            [value]="value()"
-            [required]="config().required"
-            (dateChange)="onChange($event.value)">
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [required]="config().required">
           <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
           <mat-datepicker #picker></mat-datepicker>
           @if (config().hint) {
@@ -139,9 +135,9 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <input
             matInput
             type="email"
-            [value]="value()"
-            [required]="config().required"
-            (input)="onInput($event)">
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [required]="config().required">
           @if (config().hint) {
             <mat-hint>{{ config().hint }}</mat-hint>
           }
@@ -153,10 +149,10 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <mat-label>{{ config().label }}</mat-label>
           <textarea
             matInput
-            [value]="value()"
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
             [required]="config().required"
-            rows="4"
-            (input)="onInput($event)">
+            rows="4">
           </textarea>
           @if (config().hint) {
             <mat-hint>{{ config().hint }}</mat-hint>
@@ -169,9 +165,9 @@ import { FormFieldConfig } from '../../models/form-field.model';
           <mat-label>{{ config().label }}</mat-label>
           <input
             matInput
-            [value]="value()"
-            [required]="config().required"
-            (input)="onInput($event)">
+            [ngModel]="value()"
+            (ngModelChange)="valueChange.emit($event)"
+            [required]="config().required">
         </mat-form-field>
       }
     }
@@ -194,33 +190,7 @@ import { FormFieldConfig } from '../../models/form-field.model';
   `]
 })
 export class DynamicFieldComponent {
-  // Signal-based inputs
   config = input.required<FormFieldConfig>();
   value = input<any>('');
-
-  // Signal-based output
   valueChange = output<any>();
-
-  /**
-   * Handle text input changes.
-   */
-  onInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.valueChange.emit(value);
-  }
-
-  /**
-   * Handle number input changes.
-   */
-  onNumberInput(event: Event): void {
-    const value = (event.target as HTMLInputElement).valueAsNumber;
-    this.valueChange.emit(isNaN(value) ? null : value);
-  }
-
-  /**
-   * Handle select/checkbox/date changes.
-   */
-  onChange(value: any): void {
-    this.valueChange.emit(value);
-  }
 }

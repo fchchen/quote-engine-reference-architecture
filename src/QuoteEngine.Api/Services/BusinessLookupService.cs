@@ -189,6 +189,56 @@ public class InMemoryBusinessLookupService : IBusinessLookupService
                 Email = "contact@premierrealestate.com", DateEstablished = new DateTime(2016, 5, 20),
                 EmployeeCount = 18, AnnualRevenue = 2800000m, AnnualPayroll = 1100000m,
                 IsActive = true, CreatedDate = DateTime.UtcNow.AddMonths(-14)
+            },
+            new()
+            {
+                Id = 11, BusinessName = "Pacific Coast Brewing Co", DbaName = "PC Brewing", TaxId = "11-2233445",
+                BusinessType = BusinessType.Restaurant, StateCode = "WA", ClassificationCode = "41680",
+                ClassificationDescription = "Restaurant - With Liquor", Address = "200 Brewery Lane",
+                City = "Seattle", ZipCode = "98101", Phone = "(555) 111-2233",
+                Email = "hello@pcbrewing.com", DateEstablished = new DateTime(2017, 6, 1),
+                EmployeeCount = 32, AnnualRevenue = 2400000m, AnnualPayroll = 920000m,
+                IsActive = true, CreatedDate = DateTime.UtcNow.AddMonths(-20)
+            },
+            new()
+            {
+                Id = 12, BusinessName = "Summit Accounting Partners", DbaName = "Summit CPA", TaxId = "22-3344556",
+                BusinessType = BusinessType.ProfessionalServices, StateCode = "CO", ClassificationCode = "8810",
+                ClassificationDescription = "Clerical Office Employees", Address = "1500 Financial Plaza",
+                City = "Denver", ZipCode = "80202", Phone = "(555) 222-3344",
+                Email = "info@summitcpa.com", DateEstablished = new DateTime(2011, 1, 15),
+                EmployeeCount = 25, AnnualRevenue = 3200000m, AnnualPayroll = 1850000m,
+                IsActive = true, CreatedDate = DateTime.UtcNow.AddYears(-3)
+            },
+            new()
+            {
+                Id = 13, BusinessName = "Desert Sun Electric", DbaName = "Desert Electric", TaxId = "33-4455667",
+                BusinessType = BusinessType.Construction, StateCode = "AZ", ClassificationCode = "5190",
+                ClassificationDescription = "Electrical Work", Address = "800 Volt Avenue",
+                City = "Phoenix", ZipCode = "85001", Phone = "(555) 333-4455",
+                Email = "service@desertsunelectric.com", DateEstablished = new DateTime(2009, 3, 10),
+                EmployeeCount = 42, AnnualRevenue = 4100000m, AnnualPayroll = 2200000m,
+                IsActive = true, CreatedDate = DateTime.UtcNow.AddYears(-4)
+            },
+            new()
+            {
+                Id = 14, BusinessName = "Bayview Pet Hospital", DbaName = "Bayview Vet", TaxId = "44-5566778",
+                BusinessType = BusinessType.Healthcare, StateCode = "CA", ClassificationCode = "8834",
+                ClassificationDescription = "Veterinarians", Address = "350 Animal Care Drive",
+                City = "San Diego", ZipCode = "92101", Phone = "(555) 444-5566",
+                Email = "appointments@bayviewvet.com", DateEstablished = new DateTime(2013, 9, 22),
+                EmployeeCount = 18, AnnualRevenue = 1950000m, AnnualPayroll = 980000m,
+                IsActive = true, CreatedDate = DateTime.UtcNow.AddMonths(-30)
+            },
+            new()
+            {
+                Id = 15, BusinessName = "Lone Star Auto Repair", DbaName = "Lone Star Auto", TaxId = "55-6677889",
+                BusinessType = BusinessType.Retail, StateCode = "TX", ClassificationCode = "8391",
+                ClassificationDescription = "Auto Repair Shop", Address = "1200 Mechanic Street",
+                City = "Austin", ZipCode = "78701", Phone = "(555) 555-6677",
+                Email = "repairs@lonestarauto.com", DateEstablished = new DateTime(2006, 11, 8),
+                EmployeeCount = 14, AnnualRevenue = 1100000m, AnnualPayroll = 520000m,
+                IsActive = true, CreatedDate = DateTime.UtcNow.AddYears(-5)
             }
         };
     }

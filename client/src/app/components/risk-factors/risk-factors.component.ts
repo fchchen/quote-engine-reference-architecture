@@ -1,4 +1,4 @@
-import { Component, input, output, computed, signal } from '@angular/core';
+import { Component, input, output, computed, signal, effect, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -156,6 +156,9 @@ export class RiskFactorsComponent {
   // Input for initial values
   initialFactors = input<RiskFactor[]>([]);
 
+  // Input to trigger reset from parent
+  resetTrigger = input(0);
+
   // Output for changes
   factorsChange = output<RiskFactor[]>();
 
@@ -165,6 +168,57 @@ export class RiskFactorsComponent {
   hasWrittenPolicies = signal(false);
   hasSafetyCommittee = signal(false);
   experienceMod = signal(1.0);
+
+  constructor() {
+    // Effect to load initial factors or reset when business changes.
+    // Only tracks resetTrigger. All other signal reads (initialFactors,
+    // and transitively via reset/emitFactors) are untracked so that
+    // user-driven changes to checkboxes/slider don't re-trigger this effect.
+    effect(() => {
+      const trigger = this.resetTrigger();
+      if (trigger > 0) {
+        untracked(() => {
+          const factors = this.initialFactors();
+          if (factors && factors.length > 0) {
+            this.loadFromFactors(factors);
+          } else {
+            this.reset();
+          }
+        });
+      }
+    }, { allowSignalWrites: true });
+  }
+
+  private loadFromFactors(factors: RiskFactor[]): void {
+    const claims = factors.find(f => f.factorCode === 'CLAIMS');
+    const safety = factors.find(f => f.factorCode === 'SAFETY');
+    const expMod = factors.find(f => f.factorCode === 'EXPMOD');
+
+    if (claims) {
+      this.claimsScore.set(claims.factorValue);
+    }
+    if (safety) {
+      // Reverse-calculate checkboxes from safety score
+      // Base is 40, each checkbox adds 20
+      const safetyValue = safety.factorValue;
+      this.hasSafetyProgram.set(safetyValue >= 60);
+      this.hasWrittenPolicies.set(safetyValue >= 80);
+      this.hasSafetyCommittee.set(safetyValue >= 100);
+    }
+    if (expMod) {
+      this.experienceMod.set(expMod.factorValue / 100);
+    }
+  }
+
+  reset(): void {
+    this.claimsScore.set(40);
+    this.hasSafetyProgram.set(false);
+    this.hasWrittenPolicies.set(false);
+    this.hasSafetyCommittee.set(false);
+    this.experienceMod.set(1.0);
+    // Emit the reset values to parent
+    this.emitFactors();
+  }
 
   // Computed safety score
   safetyScore = computed(() => {

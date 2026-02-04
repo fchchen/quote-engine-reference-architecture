@@ -93,16 +93,19 @@ public class RateTableController : ControllerBase
         // Return list of states where quoting is available
         var states = new List<StateInfo>
         {
+            new() { Code = "AZ", Name = "Arizona" },
             new() { Code = "CA", Name = "California" },
-            new() { Code = "TX", Name = "Texas" },
-            new() { Code = "NY", Name = "New York" },
+            new() { Code = "CO", Name = "Colorado" },
             new() { Code = "FL", Name = "Florida" },
-            new() { Code = "IL", Name = "Illinois" },
-            new() { Code = "PA", Name = "Pennsylvania" },
-            new() { Code = "OH", Name = "Ohio" },
             new() { Code = "GA", Name = "Georgia" },
+            new() { Code = "IL", Name = "Illinois" },
+            new() { Code = "MI", Name = "Michigan" },
             new() { Code = "NC", Name = "North Carolina" },
-            new() { Code = "MI", Name = "Michigan" }
+            new() { Code = "NY", Name = "New York" },
+            new() { Code = "OH", Name = "Ohio" },
+            new() { Code = "PA", Name = "Pennsylvania" },
+            new() { Code = "TX", Name = "Texas" },
+            new() { Code = "WA", Name = "Washington" }
         };
 
         return Ok(states);

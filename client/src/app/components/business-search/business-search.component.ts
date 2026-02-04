@@ -1,4 +1,4 @@
-import { Component, inject, signal, output, DestroyRef } from '@angular/core';
+import { Component, inject, signal, output, DestroyRef, input, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -102,6 +102,9 @@ export class BusinessSearchComponent {
   private lookupService = inject(BusinessLookupService);
   private destroyRef = inject(DestroyRef);
 
+  // Input to trigger reset from parent
+  resetTrigger = input(0);
+
   // Signals for state
   searchTerm = signal('');
   searchResults = signal<Business[]>([]);
@@ -114,6 +117,14 @@ export class BusinessSearchComponent {
   private searchSubject = new Subject<string>();
 
   constructor() {
+    // Effect to clear search when reset is triggered
+    effect(() => {
+      const trigger = this.resetTrigger();
+      if (trigger > 0) {
+        this.clear();
+      }
+    });
+
     // RxJS pipeline ONLY because we need debounceTime
     // Signals don't have built-in debounce capability
     this.searchSubject.pipe(

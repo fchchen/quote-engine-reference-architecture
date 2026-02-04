@@ -142,6 +142,18 @@ export class QuoteService {
   }
 
   /**
+   * Save a quote to history.
+   * Returns true if saved successfully.
+   */
+  saveQuote(quote: QuoteResponse): boolean {
+    const exists = this.quoteHistory().some(q => q.quoteNumber === quote.quoteNumber);
+    if (!exists) {
+      this.quoteHistory.update(history => [...history, quote]);
+    }
+    return true;
+  }
+
+  /**
    * Clear current quote and error state.
    */
   clearCurrentQuote(): void {

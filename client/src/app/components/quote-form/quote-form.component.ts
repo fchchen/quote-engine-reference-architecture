@@ -1,8 +1,8 @@
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, inject, signal, computed, effect, ViewChild } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -11,6 +11,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { QuoteService } from '../../services/quote.service';
 import { RateTableService } from '../../services/rate-table.service';
@@ -49,6 +50,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
     MatProgressSpinnerModule,
     MatIconModule,
     MatDividerModule,
+    MatSnackBarModule,
     BusinessSearchComponent,
     QuoteResultComponent,
     DynamicFieldComponent,
@@ -58,7 +60,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
     <div class="quote-form-container">
       <h1>Get a Quote</h1>
 
-      <mat-stepper [linear]="true" [selectedIndex]="currentStep()" #stepper>
+      <mat-stepper [linear]="true" #stepper>
         <!-- Step 1: Business Information -->
         <mat-step [stepControl]="businessForm" label="Business Info">
           <div class="step-content">
@@ -68,6 +70,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
             </p>
 
             <app-business-search
+              [resetTrigger]="searchResetTrigger()"
               (businessSelected)="onBusinessSelected($event)">
             </app-business-search>
 
@@ -85,8 +88,10 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
 
                 <mat-form-field appearance="outline" class="form-field">
                   <mat-label>Tax ID</mat-label>
-                  <input matInput formControlName="taxId" placeholder="XX-XXXXXXX">
-                  @if (businessForm.get('taxId')?.hasError('pattern')) {
+                  <input matInput formControlName="taxId" placeholder="XX-XXXXXXX" required>
+                  @if (businessForm.get('taxId')?.hasError('required')) {
+                    <mat-error>Tax ID is required</mat-error>
+                  } @else if (businessForm.get('taxId')?.hasError('pattern')) {
                     <mat-error>Format: XX-XXXXXXX</mat-error>
                   }
                 </mat-form-field>
@@ -141,7 +146,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
 
             <div class="button-row">
               <button mat-raised-button color="primary" matStepperNext
-                      [disabled]="!businessFormValid()">
+                      [disabled]="!businessForm.valid">
                 Next
               </button>
             </div>
@@ -205,7 +210,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
               </mat-form-field>
 
               <!-- Dynamic Fields based on Product Type -->
-              @for (field of dynamicFields(); track field.key) {
+              @for (field of dynamicFields(); track field.key + '-' + currentBusinessId()) {
                 <app-dynamic-field
                   [config]="field"
                   [value]="getDynamicFieldValue(field.key)"
@@ -248,6 +253,8 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
             </p>
 
             <app-risk-factors
+              [resetTrigger]="riskFactorsResetTrigger()"
+              [initialFactors]="riskFactors()"
               (factorsChange)="onRiskFactorsChange($event)">
             </app-risk-factors>
 
@@ -276,6 +283,12 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
                 (save)="onSaveQuote($event)"
                 (bind)="onBindQuote($event)">
               </app-quote-result>
+              <div class="button-row">
+                <button mat-raised-button color="accent" (click)="startNewQuote()">
+                  <mat-icon>add</mat-icon>
+                  Start New Quote
+                </button>
+              </div>
             } @else {
               <!-- Review Summary -->
               <mat-card class="review-card">
@@ -318,7 +331,7 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
                 <button mat-button matStepperPrevious>Back</button>
                 <button mat-raised-button color="primary"
                         (click)="submitQuote()"
-                        [disabled]="!isFormComplete()">
+                        [disabled]="!businessForm.valid || !coverageForm.valid">
                   <mat-icon>calculate</mat-icon>
                   Get Final Quote
                 </button>
@@ -456,7 +469,10 @@ export class QuoteFormComponent {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private rateTableService = inject(RateTableService);
+  private snackBar = inject(MatSnackBar);
   quoteService = inject(QuoteService);
+
+  @ViewChild('stepper') stepper!: MatStepper;
 
   // Reference data from resolver
   states = signal<StateInfo[]>([]);
@@ -468,13 +484,62 @@ export class QuoteFormComponent {
   // UI state
   currentStep = signal(0);
   selectedBusiness = signal<Business | null>(null);
-  riskFactors = signal<RiskFactor[]>([]);
-  dynamicFieldValues = signal<Record<string, any>>({});
+  selectedProductType = signal<string>('GeneralLiability');
+  searchResetTrigger = signal(0);
+  riskFactorsResetTrigger = signal(0);
+
+  // Data isolation per business
+  currentBusinessId = signal<string | null>(null);
+  private allDynamicFieldValues = signal<Map<string, Record<string, any>>>(new Map());
+  private allRiskFactors = signal<Map<string, RiskFactor[]>>(new Map());
+  private allCoverageFormValues = signal<Map<string, Record<string, any>>>(new Map());
+
+  private defaultCoverageValues(): Record<string, any> {
+    return {
+      productType: 'GeneralLiability',
+      classificationCode: '41650',
+      coverageLimit: 1000000,
+      deductible: 1000,
+      effectiveDate: this.getDefaultEffectiveDate()
+    };
+  }
+
+  // Computed signal for current business's risk factors
+  riskFactors = computed(() => {
+    const businessId = this.currentBusinessId();
+    if (!businessId) return [];
+    return this.allRiskFactors().get(businessId) ?? [];
+  });
+
+  // Computed signal for current business's dynamic field values
+  dynamicFieldValues = computed(() => {
+    const businessId = this.currentBusinessId();
+    if (!businessId) {
+      return this.defaultDynamicValues();
+    }
+    const allValues = this.allDynamicFieldValues();
+    return allValues.get(businessId) ?? this.defaultDynamicValues();
+  });
+
+  private defaultDynamicValues(): Record<string, any> {
+    return {
+      annualRevenue: 500000,
+      annualPayroll: 300000,
+      employeeCount: 10,
+      buildingValue: 0,
+      contentsValue: 0,
+      squareFootage: 0,
+      vehicleCount: 0,
+      recordCount: 0,
+      pciCompliant: false,
+      radius: 50
+    };
+  }
 
   // Forms
   businessForm = this.fb.group({
     businessName: ['', [Validators.required, Validators.minLength(2)]],
-    taxId: ['', [Validators.pattern(/^\d{2}-\d{7}$/)]],
+    taxId: ['', [Validators.required, Validators.pattern(/^\d{2}-\d{7}$/)]],
     businessType: ['', Validators.required],
     stateCode: ['', Validators.required],
     yearsInBusiness: [5, [Validators.required, Validators.min(1)]],
@@ -485,7 +550,7 @@ export class QuoteFormComponent {
 
   coverageForm = this.fb.group({
     productType: ['GeneralLiability', Validators.required],
-    classificationCode: ['DEFAULT'],
+    classificationCode: ['41650', Validators.required],
     coverageLimit: [1000000, Validators.required],
     deductible: [1000, Validators.required],
     effectiveDate: [this.getDefaultEffectiveDate()]
@@ -509,15 +574,14 @@ export class QuoteFormComponent {
       this.businessTypes.set(data.businessTypes);
     }
 
-    // Effect: Load dynamic fields when product type changes
-    effect(() => {
-      const productType = this.coverageForm.get('productType')?.value;
-      if (productType) {
-        this.rateTableService.getFieldsForType(productType as ProductType)
-          .subscribe(fields => this.dynamicFields.set(fields));
+    // Load initial classification codes
+    this.loadClassificationCodes('GeneralLiability');
 
-        this.rateTableService.getClassificationCodes(productType as ProductType)
-          .subscribe(codes => this.classificationCodes.set(codes));
+    // Subscribe to product type changes and reload classification codes
+    this.coverageForm.get('productType')?.valueChanges.subscribe(value => {
+      if (value) {
+        this.selectedProductType.set(value);
+        this.loadClassificationCodes(value);
       }
     });
 
@@ -530,31 +594,100 @@ export class QuoteFormComponent {
   }
 
   onBusinessSelected(business: Business): void {
+    // Save current business's coverage form values before switching
+    const previousBusinessId = this.currentBusinessId();
+    if (previousBusinessId) {
+      this.allCoverageFormValues.update(allValues => {
+        const newMap = new Map(allValues);
+        newMap.set(previousBusinessId, { ...this.coverageForm.value });
+        return newMap;
+      });
+    }
+
     this.selectedBusiness.set(business);
+
+    // Set the current business ID to isolate data
+    const businessId = business.taxId || business.businessName;
+    this.currentBusinessId.set(businessId);
+
+    // Calculate years in business from dateEstablished
+    let yearsInBusiness = 5; // default
+    if (business.dateEstablished) {
+      const established = new Date(business.dateEstablished);
+      const now = new Date();
+      yearsInBusiness = Math.max(1, Math.floor((now.getTime() - established.getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
+    }
+
     this.businessForm.patchValue({
       businessName: business.businessName,
       taxId: business.taxId,
       businessType: business.businessType,
       stateCode: business.stateCode,
+      yearsInBusiness: yearsInBusiness,
       employeeCount: business.employeeCount ?? 10,
       annualRevenue: business.annualRevenue ?? 500000,
       annualPayroll: business.annualPayroll ?? 300000
     });
+
+    // Initialize dynamic field values for this business (only if not already set)
+    const allValues = this.allDynamicFieldValues();
+    if (!allValues.has(businessId)) {
+      const newValues = new Map(allValues);
+      newValues.set(businessId, {
+        annualRevenue: business.annualRevenue ?? 500000,
+        annualPayroll: business.annualPayroll ?? 300000,
+        employeeCount: business.employeeCount ?? 10,
+        buildingValue: 0,
+        contentsValue: 0,
+        squareFootage: 0,
+        vehicleCount: 0,
+        recordCount: 0,
+        pciCompliant: false,
+        radius: 50
+      });
+      this.allDynamicFieldValues.set(newValues);
+    }
+
+    // Restore coverage form values for this business (or use defaults)
+    const savedCoverage = this.allCoverageFormValues().get(businessId);
+    const coverageValues = savedCoverage ?? this.defaultCoverageValues();
+    this.coverageForm.patchValue(coverageValues);
+
+    // Trigger risk factors reset for new business
+    this.riskFactorsResetTrigger.update(n => n + 1);
   }
 
   onRiskFactorsChange(factors: RiskFactor[]): void {
-    this.riskFactors.set(factors);
+    const businessId = this.currentBusinessId();
+    if (!businessId) return;
+
+    // Store risk factors for the current business
+    this.allRiskFactors.update(allFactors => {
+      const newMap = new Map(allFactors);
+      newMap.set(businessId, factors);
+      return newMap;
+    });
   }
 
   getDynamicFieldValue(key: string): any {
-    return this.dynamicFieldValues()[key] ?? '';
+    const values = this.dynamicFieldValues();
+    return values[key] ?? '';
   }
 
   setDynamicFieldValue(key: string, value: any): void {
-    this.dynamicFieldValues.update(values => ({
-      ...values,
-      [key]: value
-    }));
+    const businessId = this.currentBusinessId();
+    if (!businessId) return;
+
+    // Update the values for the current business
+    this.allDynamicFieldValues.update(allValues => {
+      const newMap = new Map(allValues);
+      const currentValues = newMap.get(businessId) ?? this.defaultDynamicValues();
+      newMap.set(businessId, {
+        ...currentValues,
+        [key]: value
+      });
+      return newMap;
+    });
   }
 
   submitQuote(): void {
@@ -570,13 +703,48 @@ export class QuoteFormComponent {
   }
 
   onSaveQuote(quote: any): void {
-    console.log('Save quote:', quote);
-    // Would integrate with backend save functionality
+    this.quoteService.saveQuote(quote);
+    this.snackBar.open(`Quote ${quote.quoteNumber} saved successfully`, 'Close', {
+      duration: 3000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom'
+    });
   }
 
   onBindQuote(quote: any): void {
     console.log('Bind quote:', quote);
     // Would integrate with policy binding functionality
+  }
+
+  startNewQuote(): void {
+    // Clear current quote
+    this.quoteService.clearCurrentQuote();
+
+    // Save coverage form values before reset (product type, limits, etc.)
+    const savedCoverage = { ...this.coverageForm.value };
+
+    // Only reset business form, keep coverage options
+    this.businessForm.reset({
+      yearsInBusiness: 5,
+      employeeCount: 10,
+      annualRevenue: 500000,
+      annualPayroll: 300000
+    });
+
+    // Reset selected business and current business ID
+    // This will make dynamicFieldValues and riskFactors return default/empty values
+    this.selectedBusiness.set(null);
+    this.currentBusinessId.set(null);
+
+    // Trigger search field and risk factors reset
+    this.searchResetTrigger.update(n => n + 1);
+    this.riskFactorsResetTrigger.update(n => n + 1);
+
+    // Go back to first step without resetting all forms
+    this.stepper.selectedIndex = 0;
+
+    // Restore coverage form values (product type, limits, deductible, etc.)
+    this.coverageForm.patchValue(savedCoverage);
   }
 
   hasUnsavedChanges(): boolean {
@@ -591,6 +759,16 @@ export class QuoteFormComponent {
   getProductTypeName(): string {
     const type = this.coverageForm.get('productType')?.value;
     return this.products().find(p => p.type === type)?.name ?? type ?? '';
+  }
+
+  private loadClassificationCodes(productType: string): void {
+    this.rateTableService.getClassificationCodes(productType as ProductType)
+      .subscribe(codes => {
+        this.classificationCodes.set(codes);
+      });
+
+    this.rateTableService.getFieldsForType(productType as ProductType)
+      .subscribe(fields => this.dynamicFields.set(fields));
   }
 
   private getDefaultEffectiveDate(): string {
