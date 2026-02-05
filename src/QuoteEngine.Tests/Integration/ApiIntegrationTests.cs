@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -36,6 +37,89 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         _client = factory.CreateClient();
     }
 
+    #region Auth Helpers
+
+    private async Task<HttpRequestMessage> CreateAuthenticatedRequest(HttpMethod method, string url)
+    {
+        // Get a fresh token for each test to avoid sharing state issues
+        var tokenResponse = await _client.PostAsync("/api/v1/auth/demo", null);
+        tokenResponse.EnsureSuccessStatusCode();
+        var auth = await tokenResponse.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth!.Token);
+        return request;
+    }
+
+    private async Task<string> GetDemoTokenAsync()
+    {
+        var response = await _client.PostAsync("/api/v1/auth/demo", null);
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        return auth!.Token;
+    }
+
+    #endregion
+
+    #region Auth Endpoints
+
+    [Fact]
+    public async Task AuthDemo_ReturnsToken()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/v1/auth/demo", null);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        Assert.NotNull(auth);
+        Assert.NotEmpty(auth.Token);
+        Assert.Equal("demo-user", auth.Username);
+        Assert.Equal("Demo", auth.Role);
+    }
+
+    [Fact]
+    public async Task AuthLogin_ValidCredentials_ReturnsToken()
+    {
+        // Arrange
+        var loginRequest = new LoginRequest { Username = "admin", Password = "admin123" };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/login", loginRequest, JsonOptions);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
+        Assert.NotNull(auth);
+        Assert.Equal("admin", auth.Username);
+        Assert.Equal("Admin", auth.Role);
+    }
+
+    [Fact]
+    public async Task AuthLogin_InvalidCredentials_Returns401()
+    {
+        // Arrange
+        var loginRequest = new LoginRequest { Username = "admin", Password = "wrong" };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/login", loginRequest, JsonOptions);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProtectedEndpoint_NoToken_Returns401()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/v1/business/search?searchTerm=Pacific");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    #endregion
+
     #region Health Check
 
     [Fact]
@@ -55,8 +139,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessSearch_ReturnsResults()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/search?searchTerm=Pacific");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/search?searchTerm=Pacific");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -69,8 +158,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessSearch_WithStateFilter_ReturnsFilteredResults()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/search?stateCode=TX");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/search?stateCode=TX");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -83,8 +177,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessSearch_Pagination_Works()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/search?pageSize=3&pageNumber=1");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/search?pageSize=3&pageNumber=1");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -98,8 +197,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessGetById_ExistingId_ReturnsBusiness()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/1");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/1");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -111,8 +215,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessGetById_NonExistentId_Returns404()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/999");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/999");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -121,8 +230,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessGetByTaxId_ExistingTaxId_ReturnsBusiness()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/taxid/12-3456789");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/taxid/12-3456789");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -134,8 +248,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task BusinessGetByTaxId_NonExistentTaxId_Returns404()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/business/taxid/99-9999999");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/business/taxid/99-9999999");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -148,8 +267,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetStates_ReturnsListOfStates()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/states");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/states");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -162,8 +286,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetProducts_ReturnsSixProducts()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/products");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/products");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -175,8 +304,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetBusinessTypes_ReturnsAllTypes()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/business-types");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/business-types");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -188,8 +322,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetClassificationCodes_WorkersComp_ReturnsCodes()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/classifications/WorkersCompensation");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/classifications/WorkersCompensation");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -201,9 +340,14 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetRate_ValidCriteria_ReturnsRate()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync(
+        var request = new HttpRequestMessage(HttpMethod.Get,
             "/api/v1/ratetable/rate?stateCode=CA&classificationCode=8810&productType=WorkersCompensation");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -215,9 +359,14 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetRate_UnknownCriteria_FallsBackToDefault()
     {
-        // Act - Unknown classification code should fall back to DEFAULT
-        var response = await _client.GetAsync(
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
+        // Act
+        var request = new HttpRequestMessage(HttpMethod.Get,
             "/api/v1/ratetable/rate?stateCode=CA&classificationCode=UNKNOWN&productType=WorkersCompensation");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -234,7 +383,8 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateQuote_ValidRequest_ReturnsQuote()
     {
         // Arrange
-        var request = new QuoteRequest
+        var token = await GetDemoTokenAsync();
+        var quoteRequest = new QuoteRequest
         {
             BusinessName = "Test Business LLC",
             TaxId = "12-3456789",
@@ -250,8 +400,14 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
             Deductible = 1000m
         };
 
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/quote")
+        {
+            Content = JsonContent.Create(quoteRequest, options: JsonOptions)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/quote", request, JsonOptions);
+        var response = await _client.SendAsync(httpRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -267,7 +423,8 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateQuote_InvalidRequest_Returns400()
     {
         // Arrange - YearsInBusiness=0 violates [Range(1,50)] model validation
-        var request = new QuoteRequest
+        var token = await GetDemoTokenAsync();
+        var quoteRequest = new QuoteRequest
         {
             BusinessName = "Brand New LLC",
             TaxId = "99-8765432",
@@ -283,8 +440,14 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
             Deductible = 1000m
         };
 
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/quote")
+        {
+            Content = JsonContent.Create(quoteRequest, options: JsonOptions)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/quote", request, JsonOptions);
+        var response = await _client.SendAsync(httpRequest);
 
         // Assert - Model validation rejects before reaching service
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -294,7 +457,8 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateAndRetrieveQuote_RoundTrip()
     {
         // Arrange
-        var request = new QuoteRequest
+        var token = await GetDemoTokenAsync();
+        var quoteRequest = new QuoteRequest
         {
             BusinessName = "RoundTrip Test LLC",
             TaxId = "12-3456789",
@@ -311,13 +475,20 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
         };
 
         // Act - Create
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/quote", request, JsonOptions);
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/quote")
+        {
+            Content = JsonContent.Create(quoteRequest, options: JsonOptions)
+        };
+        createRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var createResponse = await _client.SendAsync(createRequest);
         createResponse.EnsureSuccessStatusCode();
         var createdQuote = await createResponse.Content.ReadFromJsonAsync<QuoteResponse>(JsonOptions);
         Assert.NotNull(createdQuote);
 
         // Act - Retrieve
-        var getResponse = await _client.GetAsync($"/api/v1/quote/{createdQuote.QuoteNumber}");
+        var getRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/quote/{createdQuote.QuoteNumber}");
+        getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var getResponse = await _client.SendAsync(getRequest);
 
         // Assert
         getResponse.EnsureSuccessStatusCode();
@@ -330,8 +501,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task GetQuote_NonExistent_Returns404()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/quote/QT-NONEXISTENT");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/quote/QT-NONEXISTENT");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -341,7 +517,8 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CheckEligibility_ValidBusiness_ReturnsEligible()
     {
         // Arrange
-        var request = new QuoteRequest
+        var token = await GetDemoTokenAsync();
+        var quoteRequest = new QuoteRequest
         {
             BusinessName = "Eligible LLC",
             TaxId = "12-3456789",
@@ -357,8 +534,14 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
             Deductible = 1000m
         };
 
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/quote/eligibility")
+        {
+            Content = JsonContent.Create(quoteRequest, options: JsonOptions)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
         // Act
-        var response = await _client.PostAsJsonAsync("/api/v1/quote/eligibility", request, JsonOptions);
+        var response = await _client.SendAsync(httpRequest);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -374,8 +557,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task JsonResponse_UsesCamelCase()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/states");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/states");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         // Assert - Properties should be camelCase
@@ -389,8 +577,13 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
     [Fact]
     public async Task JsonResponse_EnumsAreStrings()
     {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+
         // Act
-        var response = await _client.GetAsync("/api/v1/ratetable/products");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/ratetable/products");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var response = await _client.SendAsync(request);
         var json = await response.Content.ReadAsStringAsync();
 
         // Assert - Enum values should be strings, not numbers

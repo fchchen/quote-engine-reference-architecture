@@ -2,6 +2,7 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError, finalize } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
+import { AuthService } from '../services/auth.service';
 
 /**
  * HTTP Error Interceptor (Functional style for Angular 17+).
@@ -27,6 +28,11 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 401:
             errorMessage = 'Unauthorized - please log in';
+            // Clear stale token and redirect to login
+            if (!req.url.includes('/auth/')) {
+              const authService = inject(AuthService);
+              authService.logout();
+            }
             break;
           case 403:
             errorMessage = 'Access denied';

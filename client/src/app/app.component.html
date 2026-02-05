@@ -4,10 +4,18 @@
   </button>
   <span class="app-title">Quote Engine</span>
   <span class="spacer"></span>
-  <button mat-button routerLink="/quote">
-    <mat-icon>add</mat-icon>
-    New Quote
-  </button>
+  @if (authService.isAuthenticated()) {
+    <button mat-button routerLink="/quote">
+      <mat-icon>add</mat-icon>
+      New Quote
+    </button>
+    <span class="user-info" [matTooltip]="'Role: ' + authService.currentRole()">
+      {{ authService.currentUser() }}
+    </span>
+    <button mat-icon-button (click)="authService.logout()" matTooltip="Logout">
+      <mat-icon>logout</mat-icon>
+    </button>
+  }
 </mat-toolbar>
 
 @if (loadingService.isLoading()) {
@@ -17,22 +25,37 @@
 <mat-sidenav-container class="sidenav-container">
   <mat-sidenav #sidenav mode="over">
     <mat-nav-list>
-      <a mat-list-item routerLink="/quote" routerLinkActive="active"
-         (click)="sidenav.close()">
-        <mat-icon matListItemIcon>add_circle</mat-icon>
-        <span matListItemTitle>New Quote</span>
-      </a>
-      <a mat-list-item routerLink="/history" routerLinkActive="active"
-         (click)="sidenav.close()">
-        <mat-icon matListItemIcon>history</mat-icon>
-        <span matListItemTitle>Quote History</span>
-      </a>
-      <mat-divider></mat-divider>
+      @if (authService.isAuthenticated()) {
+        <a mat-list-item routerLink="/quote" routerLinkActive="active"
+           (click)="sidenav.close()">
+          <mat-icon matListItemIcon>add_circle</mat-icon>
+          <span matListItemTitle>New Quote</span>
+        </a>
+        <a mat-list-item routerLink="/history" routerLinkActive="active"
+           (click)="sidenav.close()">
+          <mat-icon matListItemIcon>history</mat-icon>
+          <span matListItemTitle>Quote History</span>
+        </a>
+        <mat-divider></mat-divider>
+      }
       <a mat-list-item routerLink="/about" routerLinkActive="active"
          (click)="sidenav.close()">
         <mat-icon matListItemIcon>info</mat-icon>
         <span matListItemTitle>About</span>
       </a>
+      @if (authService.isAuthenticated()) {
+        <mat-divider></mat-divider>
+        <button mat-list-item (click)="authService.logout(); sidenav.close()">
+          <mat-icon matListItemIcon>logout</mat-icon>
+          <span matListItemTitle>Logout</span>
+        </button>
+      } @else {
+        <a mat-list-item routerLink="/login" routerLinkActive="active"
+           (click)="sidenav.close()">
+          <mat-icon matListItemIcon>login</mat-icon>
+          <span matListItemTitle>Login</span>
+        </a>
+      }
     </mat-nav-list>
   </mat-sidenav>
 

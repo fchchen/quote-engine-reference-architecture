@@ -1,4 +1,8 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using QuoteEngine.Api.Middleware;
 using QuoteEngine.Api.Services;
 using QuoteEngine.Data;
@@ -28,15 +32,39 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Quote Engine API",
         Version = "v1",
         Description = "Commercial Insurance Quoting Platform API",
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        Contact = new OpenApiContact
         {
             Name = "API Support",
             Email = "support@example.com"
+        }
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
         }
     });
 });
@@ -47,6 +75,7 @@ builder.Services.AddSwaggerGen(options =>
 
 // Singleton - Stateless calculation services (thread-safe, no instance state)
 builder.Services.AddSingleton<IRiskCalculator, RiskCalculator>();
+builder.Services.AddSingleton<IAuthService, AuthService>();
 
 // Feature toggle: use database services when a connection string is configured,
 // otherwise fall back to in-memory services (CI, local dev without DB)
@@ -70,6 +99,30 @@ else
 // Scoped - Services that might use DbContext in production
 // Using Scoped ensures new instance per request (important for EF Core DbContext)
 builder.Services.AddScoped<IQuoteService, QuoteService>();
+
+// ============================================================================
+// CONFIGURE AUTHENTICATION & AUTHORIZATION
+// ============================================================================
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("JWT Key not configured. Set Jwt:Key in appsettings.json.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 // ============================================================================
 // CONFIGURE CORS
@@ -150,6 +203,10 @@ app.UseRequestValidation();
 
 // Routing
 app.UseRouting();
+
+// Authentication & Authorization (after routing, before endpoints)
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Health check endpoint
 app.MapHealthChecks("/health");

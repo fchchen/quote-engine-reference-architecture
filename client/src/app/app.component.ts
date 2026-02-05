@@ -6,7 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { LoadingService } from './services/loading.service';
+import { AuthService } from './services/auth.service';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 /**
@@ -30,11 +32,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatIconModule,
     MatSidenavModule,
     MatListModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatTooltipModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
   loadingService = inject(LoadingService);
+  authService = inject(AuthService);
 }

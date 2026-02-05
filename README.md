@@ -16,6 +16,7 @@ A production-ready reference architecture for building scalable, real-time comme
 │         │                │                │                  │          │
 │  ┌──────┴────────────────┴────────────────┴──────────────────┴────────┐ │
 │  │                    Services (Signals + RxJS)                        │ │
+│  │  • AuthService (JWT auth, token management)                         │ │
 │  │  • QuoteService (state management)                                  │ │
 │  │  • BusinessLookupService (search with debounce)                     │ │
 │  │  • RateTableService (cached reference data)                         │ │
@@ -25,17 +26,18 @@ A production-ready reference architecture for building scalable, real-time comme
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         .NET 8 Web API                                   │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
-│  │ QuoteController │  │BusinessController│  │  RateTableController   │  │
-│  └────────┬────────┘  └────────┬────────┘  └────────────┬────────────┘  │
-│           │                    │                        │               │
-│  ┌────────┴────────────────────┴────────────────────────┴────────────┐  │
-│  │                         Services Layer                             │  │
-│  │  ┌─────────────┐  ┌────────────────┐  ┌───────────────────────┐   │  │
-│  │  │QuoteService │  │ RiskCalculator │  │ InMemoryRateTableSvc  │   │  │
-│  │  │ (business   │  │ (premium calc) │  │ (demo data)           │   │  │
-│  │  │  logic)     │  │                │  │                       │   │  │
-│  │  └─────────────┘  └────────────────┘  └───────────────────────┘   │  │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │AuthController│ │QuoteController│ │BusinessContr│ │RateTableContr│   │
+│  │ [Anonymous]  │ │ [Authorize]  │ │  [Authorize] │ │  [Authorize] │   │
+│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └──────┬───────┘   │
+│         │                │                │                │           │
+│  ┌──────┴────────────────┴────────────────┴────────────────┴────────┐  │
+│  │                         Services Layer                            │  │
+│  │  ┌───────────┐ ┌─────────────┐ ┌──────────────┐ ┌─────────────┐  │  │
+│  │  │AuthService│ │QuoteService │ │RiskCalculator│ │InMemoryRate │  │  │
+│  │  │(JWT gen)  │ │(business    │ │(premium calc)│ │TableService │  │  │
+│  │  │           │ │ logic)      │ │              │ │(demo data)  │  │  │
+│  │  └───────────┘ └─────────────┘ └──────────────┘ └─────────────┘  │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 │           │                                                             │
 │  ┌────────┴──────────────────────────────────────────────────────────┐  │
@@ -75,12 +77,89 @@ A production-ready reference architecture for building scalable, real-time comme
 
 ## Key Features
 
+- **JWT Authentication**: Demo-friendly auth with "Try Demo" button and optional login
 - **Signal-First State Management**: Angular 17+ signals for reactive UI state
 - **Real-Time Premium Calculation**: Instant quote generation with premium breakdown
 - **RESTful API Design**: Versioned endpoints with proper HTTP semantics
 - **Dependency Injection**: Loose coupling for testability and flexibility
 - **Clean Architecture**: Separation of concerns across layers
 - **Free Tier Azure Deployment**: Static Web Apps + App Service with zero-cost in-memory data
+
+## Authentication & Authorization
+
+The application implements JWT Bearer authentication with a demo-friendly approach:
+
+### Authentication Flow
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Login Page    │     │   Auth Service  │     │   .NET API      │
+│                 │     │   (Angular)     │     │                 │
+│  ┌───────────┐  │     │                 │     │  ┌───────────┐  │
+│  │ Try Demo  │──┼────►│ POST /auth/demo │────►│  │ AuthContr │  │
+│  └───────────┘  │     │                 │     │  │  oller    │  │
+│                 │     │                 │     │  └─────┬─────┘  │
+│  ┌───────────┐  │     │                 │     │        │        │
+│  │  Sign In  │──┼────►│ POST /auth/login│────►│  ┌─────▼─────┐  │
+│  │ (optional)│  │     │                 │     │  │AuthService│  │
+│  └───────────┘  │     │                 │     │  │(JWT Gen)  │  │
+└─────────────────┘     └────────┬────────┘     │  └───────────┘  │
+                                 │              └─────────────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │  localStorage   │
+                        │  (token store)  │
+                        └────────┬────────┘
+                                 │
+                        ┌────────▼────────┐
+                        │ Auth Interceptor│
+                        │ (adds Bearer    │
+                        │  token to all   │
+                        │  API requests)  │
+                        └─────────────────┘
+```
+
+### Demo Users
+
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin123` | Admin |
+| `underwriter` | `underwriter123` | Underwriter |
+| `agent` | `agent123` | Agent |
+
+Or click **"Try Demo"** to get instant access without credentials.
+
+### Protected Routes
+
+| Route | Protection |
+|-------|------------|
+| `/login` | Public |
+| `/about` | Public |
+| `/quote` | Requires authentication |
+| `/history` | Requires authentication |
+
+### JWT Token Structure
+
+Tokens are issued with the following claims:
+- `sub` (Subject): Unique user identifier (GUID)
+- `name`: Username
+- `role`: User role (Admin, Underwriter, Agent, Demo)
+- `jti`: Unique token identifier
+- `exp`: Expiration (60 minutes from issue)
+
+### Security Implementation
+
+**Backend (.NET 8)**:
+- JWT Bearer authentication middleware
+- `[Authorize]` attribute on protected controllers
+- Token validation: issuer, audience, lifetime, signing key
+- HMAC-SHA256 signing algorithm
+
+**Frontend (Angular 17)**:
+- Functional HTTP interceptor attaches Bearer token
+- Auth guard redirects unauthenticated users to `/login`
+- Automatic token refresh check on app init
+- 401 responses trigger logout and redirect
 
 ## User Journey
 
@@ -221,8 +300,16 @@ This project demonstrates proficiency in:
 ### .NET Core
 - Dependency Injection lifetimes (Singleton/Scoped/Transient)
 - Async/Await patterns with CancellationToken
-- Middleware pipeline configuration
+- Middleware pipeline configuration (ordering matters!)
+- JWT Bearer authentication with token validation
 - LINQ queries and expressions
+
+### Security & Authentication
+- JWT token generation and validation (HMAC-SHA256)
+- Claims-based identity (sub, name, role, jti)
+- `[Authorize]` attribute for endpoint protection
+- Middleware ordering: `UseRouting()` → `UseAuthentication()` → `UseAuthorization()` → `MapControllers()`
+- Token storage and automatic attachment via interceptors
 
 ### SQL Server
 - Index design (Clustered vs Non-clustered)
@@ -233,7 +320,8 @@ This project demonstrates proficiency in:
 ### Angular 17+
 - Signals for state management
 - Standalone components
-- Functional interceptors and guards
+- Functional interceptors (auth token injection)
+- Functional route guards (authentication check)
 - RxJS integration (debounce, switchMap)
 
 ### System Design
@@ -241,13 +329,26 @@ This project demonstrates proficiency in:
 - Service layer patterns
 - Repository pattern
 - Clean architecture
+- Authentication/Authorization patterns
 
 ## Sample API Calls
 
 ```bash
-# Create a quote
+# Get a demo token (no credentials required)
+curl -X POST http://localhost:5210/api/v1/auth/demo
+
+# Login with credentials
+curl -X POST http://localhost:5210/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# Store the token
+TOKEN=$(curl -s -X POST http://localhost:5210/api/v1/auth/demo | jq -r '.token')
+
+# Create a quote (authenticated)
 curl -X POST http://localhost:5210/api/v1/quote \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "businessName": "Test Business LLC",
     "taxId": "12-3456789",
@@ -262,14 +363,17 @@ curl -X POST http://localhost:5210/api/v1/quote \
     "deductible": 1000
   }'
 
-# Get a quote
-curl http://localhost:5210/api/v1/quote/QT-20240101-12345
+# Get a quote (authenticated)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:5210/api/v1/quote/QT-20240101-12345
 
-# Search businesses
-curl "http://localhost:5210/api/v1/business/search?searchTerm=Tech&stateCode=CA"
+# Search businesses (authenticated)
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:5210/api/v1/business/search?searchTerm=Tech&stateCode=CA"
 
-# Get classification codes
-curl http://localhost:5210/api/v1/ratetable/classifications/GeneralLiability
+# Get classification codes (authenticated)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:5210/api/v1/ratetable/classifications/GeneralLiability
 ```
 
 ## Testing

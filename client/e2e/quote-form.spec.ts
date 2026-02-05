@@ -1,6 +1,19 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
+ * Helper to login via demo button.
+ */
+async function loginDemo(page: Page) {
+  await page.goto('/');
+  // Wait for redirect to login
+  await page.waitForURL(/\/login/, { timeout: 5000 });
+  // Click Try Demo button
+  await page.getByRole('button', { name: /Try Demo/ }).click();
+  // Wait for redirect to quote page
+  await page.waitForURL(/\/quote/, { timeout: 10000 });
+}
+
+/**
  * Helper to search for and select a business from the autocomplete.
  */
 async function selectBusiness(page: Page, searchTerm: string, businessName: string) {
@@ -29,7 +42,7 @@ async function goToStep(page: Page, stepLabel: string) {
 
 test.describe('Quote Form', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await loginDemo(page);
   });
 
   test('should load the quote form page', async ({ page }) => {
@@ -68,7 +81,7 @@ test.describe('Quote Form', () => {
 
 test.describe('Business Data Isolation', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await loginDemo(page);
   });
 
   test('Coverage tab should show different values for different businesses', async ({ page }) => {
@@ -236,7 +249,7 @@ test.describe('Business Data Isolation', () => {
 
 test.describe('Business Info Persistence', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await loginDemo(page);
   });
 
   test('Edited business fields should persist when switching back', async ({ page }) => {
@@ -297,7 +310,7 @@ test.describe('Business Info Persistence', () => {
 
 test.describe('Coverage Tab Field Persistence', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await loginDemo(page);
   });
 
   test('Coverage field values should persist when navigating between tabs', async ({ page }) => {
@@ -353,7 +366,7 @@ test.describe('Coverage Tab Field Persistence', () => {
 
 test.describe('Quote Submission', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await loginDemo(page);
   });
 
   test('should submit a quote and see the result', async ({ page }) => {

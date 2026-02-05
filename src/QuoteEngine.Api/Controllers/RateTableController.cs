@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuoteEngine.Api.Models;
 using QuoteEngine.Api.Services;
@@ -8,6 +9,7 @@ namespace QuoteEngine.Api.Controllers;
 /// API controller for rate table and classification code lookups.
 /// Supports the dynamic form fields and rate lookups in the frontend.
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/v1/[controller]")]
 [Produces("application/json")]

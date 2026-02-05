@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuoteEngine.Api.Models;
 using QuoteEngine.Api.Services;
@@ -15,6 +16,7 @@ namespace QuoteEngine.Api.Controllers;
 /// - Proper HTTP verb usage and status codes
 /// - CancellationToken support for cancellable operations
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/v1/[controller]")]
 [Produces("application/json")]

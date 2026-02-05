@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuoteEngine.Api.Models;
 using QuoteEngine.Api.Services;
@@ -8,6 +9,7 @@ namespace QuoteEngine.Api.Controllers;
 /// API controller for business lookup operations.
 /// Supports the business search/autocomplete functionality in the frontend.
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/v1/[controller]")]
 [Produces("application/json")]

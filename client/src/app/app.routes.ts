@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { rateTableResolver } from './resolvers/rate-table.resolver';
 import { quoteIncompleteGuard } from './guards/quote-incomplete.guard';
+import { authGuard } from './guards/auth.guard';
 
 /**
  * Application routes with guards and resolvers.
@@ -17,6 +18,12 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
   {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/login/login.page')
+        .then(m => m.LoginPage)
+  },
+  {
     path: 'quote',
     loadComponent: () =>
       import('./components/quote-form/quote-form.component')
@@ -24,13 +31,15 @@ export const routes: Routes = [
     resolve: {
       referenceData: rateTableResolver
     },
+    canActivate: [authGuard],
     canDeactivate: [quoteIncompleteGuard]
   },
   {
     path: 'history',
     loadComponent: () =>
       import('./pages/history/history.page')
-        .then(m => m.HistoryPage)
+        .then(m => m.HistoryPage),
+    canActivate: [authGuard]
   },
   {
     path: 'about',
