@@ -27,6 +27,9 @@ public class QuoteDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Isolate all tables under the "quote" schema to coexist with other apps
+        modelBuilder.HasDefaultSchema("quote");
+
         // ====================================================================
         // BUSINESS ENTITY CONFIGURATION
         // ====================================================================

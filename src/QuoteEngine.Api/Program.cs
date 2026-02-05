@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using QuoteEngine.Api.Middleware;
 using QuoteEngine.Api.Services;
+using QuoteEngine.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,8 +47,25 @@ builder.Services.AddSwaggerGen(options =>
 
 // Singleton - Stateless calculation services (thread-safe, no instance state)
 builder.Services.AddSingleton<IRiskCalculator, RiskCalculator>();
-builder.Services.AddSingleton<IRateTableService, InMemoryRateTableService>();
-builder.Services.AddSingleton<IBusinessLookupService, InMemoryBusinessLookupService>();
+
+// Feature toggle: use database services when a connection string is configured,
+// otherwise fall back to in-memory services (CI, local dev without DB)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (!string.IsNullOrEmpty(connectionString))
+{
+    // Database mode — register EF Core and database-backed services
+    builder.Services.AddDbContext<QuoteDbContext>(options =>
+        options.UseSqlServer(connectionString));
+    builder.Services.AddScoped<IRateTableService, DatabaseRateTableService>();
+    builder.Services.AddScoped<IBusinessLookupService, DatabaseBusinessLookupService>();
+}
+else
+{
+    // In-memory mode — no database required
+    builder.Services.AddSingleton<IRateTableService, InMemoryRateTableService>();
+    builder.Services.AddSingleton<IBusinessLookupService, InMemoryBusinessLookupService>();
+}
 
 // Scoped - Services that might use DbContext in production
 // Using Scoped ensures new instance per request (important for EF Core DbContext)
@@ -88,6 +107,14 @@ builder.Services.AddHealthChecks();
 // BUILD THE APPLICATION
 // ============================================================================
 var app = builder.Build();
+
+// Seed database when running in database mode
+if (!string.IsNullOrEmpty(connectionString))
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<QuoteDbContext>();
+    await SeedData.InitializeAsync(dbContext);
+}
 
 // ============================================================================
 // CONFIGURE HTTP PIPELINE (Middleware)

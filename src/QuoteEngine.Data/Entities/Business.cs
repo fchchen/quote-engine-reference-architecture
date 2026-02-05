@@ -145,7 +145,7 @@ public class RateTable
     public int Id { get; set; }
 
     [Required]
-    [StringLength(2)]
+    [StringLength(10)]
     public string StateCode { get; set; } = string.Empty;
 
     [Required]
