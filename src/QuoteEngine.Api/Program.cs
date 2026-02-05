@@ -89,10 +89,9 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("AllowAzure", policy =>
     {
-        // In production, replace with your actual Azure Static Web App URL
         policy.WithOrigins(
-                "https://*.azurestaticapps.net",
-                "https://*.azurewebsites.net")
+                "https://lively-coast-0804ea410.6.azurestaticapps.net",
+                "https://quote-engine-api.azurewebsites.net")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
