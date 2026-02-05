@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   dotnet-tests:
@@ -98,13 +99,13 @@ jobs:
           retention-days: 30
 
   # ============================================================================
-  # DEPLOY JOBS — only run on push to main (not on PRs)
+  # DEPLOY JOBS — manual only (trigger via "Run workflow" button)
   # ============================================================================
 
   deploy-api:
     runs-on: ubuntu-latest
     needs: [e2e-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
@@ -130,7 +131,7 @@ jobs:
   deploy-ui:
     runs-on: ubuntu-latest
     needs: [e2e-tests]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 

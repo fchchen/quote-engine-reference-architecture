@@ -1,5 +1,7 @@
 # Quote Engine Reference Architecture
 
+[![CI/CD](https://github.com/fchchen/quote-engine-reference-architecture/actions/workflows/ci.yml/badge.svg)](https://github.com/fchchen/quote-engine-reference-architecture/actions/workflows/ci.yml)
+
 A production-ready reference architecture for building scalable, real-time commercial insurance quoting platforms. Demonstrates high-throughput API design, async processing patterns, and financial transaction integrity using .NET Core, SQL Server, and Azure Functions.
 
 ## Architecture Overview
@@ -54,19 +56,20 @@ A production-ready reference architecture for building scalable, real-time comme
 
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                      Azure Static Web Apps                               │
-│  ┌────────────────────────┐  ┌────────────────────────────────────────┐ │
-│  │   Angular Frontend     │  │        Azure Functions                  │ │
-│  │   (Static Files)       │  │  ┌────────────┐  ┌─────────────────┐   │ │
-│  │                        │  │  │ GetQuote   │  │CalculatePremium │   │ │
-│  │                        │  │  │ (HTTP)     │  │ (HTTP)          │   │ │
-│  │                        │  │  └────────────┘  └─────────────────┘   │ │
-│  └────────────────────────┘  │         │                              │ │
-│                              │         ▼                              │ │
-│                              │  ┌──────────────────────────────────┐  │ │
-│                              │  │    MockDataService (JSON)        │  │ │
-│                              │  │    (No SQL cost)                 │  │ │
-│                              │  └──────────────────────────────────┘  │ │
-│                              └────────────────────────────────────────┘ │
+│                      (Angular Frontend)                                  │
+└────────────────────────────┬────────────────────────────────────────────┘
+                             │ HTTP (/api/v1)
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                Azure App Service (Linux, Free Tier)                       │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
+│  │ QuoteController │  │BusinessController│  │  RateTableController   │  │
+│  └────────┬────────┘  └────────┬────────┘  └────────────┬────────────┘  │
+│           │                    │                        │               │
+│  ┌────────┴────────────────────┴────────────────────────┴────────────┐  │
+│  │                    Services Layer                                   │  │
+│  │  InMemoryDataServices (no SQL cost) or Azure SQL (optional)        │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,7 +80,7 @@ A production-ready reference architecture for building scalable, real-time comme
 - **RESTful API Design**: Versioned endpoints with proper HTTP semantics
 - **Dependency Injection**: Loose coupling for testability and flexibility
 - **Clean Architecture**: Separation of concerns across layers
-- **Free Tier Azure Deployment**: Serverless functions with zero-cost storage
+- **Free Tier Azure Deployment**: Static Web Apps + App Service with zero-cost in-memory data
 
 ## Tech Stack
 
@@ -86,9 +89,9 @@ A production-ready reference architecture for building scalable, real-time comme
 | Frontend | Angular 17+ | UI with signals, Material Design |
 | Backend | .NET 8 | RESTful API with DI |
 | Database | SQL Server Express | Local development |
-| Serverless | Azure Functions | Free tier deployment |
+| Hosting | Azure Static Web Apps + App Service | Free tier deployment |
 | ORM | Entity Framework Core 8 | Data access |
-| Testing | xUnit + Moq | Unit tests |
+| Testing | xUnit + Moq + Playwright | Unit, integration, and E2E tests |
 
 ## Quick Start
 
@@ -112,7 +115,7 @@ A production-ready reference architecture for building scalable, real-time comme
    cd src/QuoteEngine.Api
    dotnet run
    ```
-   API will be available at `http://localhost:5000`
+   API will be available at `http://localhost:5210`
 
 3. **Run the Angular frontend**
    ```bash
@@ -137,6 +140,23 @@ cd src/QuoteEngine.Functions
 func start
 ```
 Functions will be available at `http://localhost:7071`
+
+### Azure Deployment
+
+The project is deployed to Azure on the free tier:
+
+| Component | URL |
+|-----------|-----|
+| API | https://quote-engine-api.azurewebsites.net/api/v1 |
+| Frontend | https://lively-coast-0804ea410.6.azurestaticapps.net |
+
+**CI/CD**: GitHub Actions runs .NET tests, Angular build, and Playwright E2E on every push/PR. Azure deployment is triggered manually via the "Run workflow" button in GitHub Actions.
+
+**Required GitHub Secrets**:
+- `AZURE_CREDENTIALS` — service principal JSON for Azure App Service deployment
+- `AZURE_STATIC_WEB_APPS_API_TOKEN` — deployment token for Azure Static Web Apps
+
+**Feature toggle**: When an Azure SQL connection string is present, the API uses Azure SQL; when absent, it falls back to in-memory data services (zero-cost demo).
 
 ## Project Structure
 
@@ -190,7 +210,7 @@ This project demonstrates proficiency in:
 
 ```bash
 # Create a quote
-curl -X POST http://localhost:5000/api/v1/quote \
+curl -X POST http://localhost:5210/api/v1/quote \
   -H "Content-Type: application/json" \
   -d '{
     "businessName": "Test Business LLC",
@@ -207,13 +227,13 @@ curl -X POST http://localhost:5000/api/v1/quote \
   }'
 
 # Get a quote
-curl http://localhost:5000/api/v1/quote/QT-20240101-12345
+curl http://localhost:5210/api/v1/quote/QT-20240101-12345
 
 # Search businesses
-curl "http://localhost:5000/api/v1/business/search?searchTerm=Tech&stateCode=CA"
+curl "http://localhost:5210/api/v1/business/search?searchTerm=Tech&stateCode=CA"
 
 # Get classification codes
-curl http://localhost:5000/api/v1/ratetable/classifications/GeneralLiability
+curl http://localhost:5210/api/v1/ratetable/classifications/GeneralLiability
 ```
 
 ## Testing
