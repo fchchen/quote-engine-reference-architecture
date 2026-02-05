@@ -116,11 +116,15 @@ jobs:
       - name: Publish API
         run: dotnet publish src/QuoteEngine.Api -c Release -o publish
 
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: quote-engine-api
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: publish
 
   deploy-ui:
