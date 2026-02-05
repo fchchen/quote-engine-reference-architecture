@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, throwError } from 'rxjs';
+import { catchError, throwError, finalize } from 'rxjs';
 import { LoadingService } from '../services/loading.service';
 
 /**
@@ -87,9 +87,6 @@ export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
   loadingService.startLoading(loadingKey);
 
   return next(req).pipe(
-    catchError(err => {
-      loadingService.stopLoading(loadingKey);
-      return throwError(() => err);
-    })
+    finalize(() => loadingService.stopLoading(loadingKey))
   );
 };
