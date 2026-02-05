@@ -82,6 +82,42 @@ A production-ready reference architecture for building scalable, real-time comme
 - **Clean Architecture**: Separation of concerns across layers
 - **Free Tier Azure Deployment**: Static Web Apps + App Service with zero-cost in-memory data
 
+## User Journey
+
+### Step 1: Business Search & Selection
+
+Search for an existing business by name or Tax ID with autocomplete results:
+
+![Landing page with business search](screenshots/01-landing-page.png)
+
+![Search autocomplete results for "pacific"](screenshots/02-search-results.png)
+
+Selecting a business auto-populates all form fields:
+
+![Business form populated with Pacific Coast Brewing Co](screenshots/03-business-selected.png)
+
+### Step 2: Coverage Options
+
+Configure product type, classification code, coverage limits, and deductible:
+
+![Coverage options step](screenshots/04-coverage-step.png)
+
+### Step 3: Risk Factors (Optional)
+
+Adjust claims history, safety programs, and experience modification factor:
+
+![Risk factors step](screenshots/05-risk-factors-step.png)
+
+### Step 4: Review & Quote Result
+
+Review the quote summary and submit to get a real-time premium calculation:
+
+![Review and submit step](screenshots/06-review-step.png)
+
+The final quote shows a full premium breakdown with base premium, discounts, taxes, and risk assessment:
+
+![Final quote result with premium breakdown](screenshots/07-quote-result.png)
+
 ## Tech Stack
 
 | Layer | Technology | Purpose |
