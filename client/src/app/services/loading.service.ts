@@ -24,7 +24,7 @@ export class LoadingService {
   /**
    * Start a loading operation.
    */
-  startLoading(key: string = 'default'): void {
+  startLoading(key = 'default'): void {
     this.loadingOperations.update(ops => {
       const newOps = new Set(ops);
       newOps.add(key);
@@ -35,7 +35,7 @@ export class LoadingService {
   /**
    * Stop a loading operation.
    */
-  stopLoading(key: string = 'default'): void {
+  stopLoading(key = 'default'): void {
     this.loadingOperations.update(ops => {
       const newOps = new Set(ops);
       newOps.delete(key);

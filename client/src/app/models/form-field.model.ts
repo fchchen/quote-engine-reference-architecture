@@ -7,7 +7,7 @@ export interface FormFieldConfig {
   label: string;
   type: FormFieldType;
   required: boolean;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean;
   validators?: FormFieldValidator[];
   options?: FormFieldOption[];
   hint?: string;
@@ -35,7 +35,7 @@ export type FormFieldType =
 
 export interface FormFieldValidator {
   type: ValidatorType;
-  value?: any;
+  value?: string | number | boolean;
   message: string;
 }
 
@@ -50,7 +50,7 @@ export type ValidatorType =
   | 'custom';
 
 export interface FormFieldOption {
-  value: any;
+  value: string | number | boolean;
   label: string;
   disabled?: boolean;
 }
@@ -58,7 +58,7 @@ export interface FormFieldOption {
 export interface VisibilityCondition {
   field: string;
   operator: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan';
-  value: any;
+  value: string | number | boolean;
 }
 
 /**

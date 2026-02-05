@@ -20,7 +20,7 @@ import { QuoteResultComponent } from '../quote-result/quote-result.component';
 import { DynamicFieldComponent } from '../dynamic-field/dynamic-field.component';
 import { RiskFactorsComponent } from '../risk-factors/risk-factors.component';
 import { Business, StateInfo, ProductInfo, BusinessTypeInfo } from '../../models/business.model';
-import { QuoteRequest, ProductType, BusinessType, RiskFactor } from '../../models/quote.model';
+import { QuoteRequest, QuoteResponse, ProductType, RiskFactor } from '../../models/quote.model';
 import { FormFieldConfig } from '../../models/form-field.model';
 import { ReferenceData } from '../../resolvers/rate-table.resolver';
 
@@ -56,414 +56,8 @@ import { ReferenceData } from '../../resolvers/rate-table.resolver';
     DynamicFieldComponent,
     RiskFactorsComponent
   ],
-  template: `
-    <div class="quote-form-container">
-      <h1>Get a Quote</h1>
-
-      <mat-stepper [linear]="true" #stepper>
-        <!-- Step 1: Business Information -->
-        <mat-step [stepControl]="businessForm" label="Business Info">
-          <div class="step-content">
-            <h2>Business Information</h2>
-            <p class="step-description">
-              Search for an existing business or enter new information.
-            </p>
-
-            <app-business-search
-              [resetTrigger]="searchResetTrigger()"
-              (businessSelected)="onBusinessSelected($event)">
-            </app-business-search>
-
-            <mat-divider></mat-divider>
-
-            <form [formGroup]="businessForm">
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Business Name</mat-label>
-                  <input matInput formControlName="businessName" required>
-                  @if (businessForm.get('businessName')?.hasError('required')) {
-                    <mat-error>Business name is required</mat-error>
-                  }
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Tax ID</mat-label>
-                  <input matInput formControlName="taxId" placeholder="XX-XXXXXXX" required>
-                  @if (businessForm.get('taxId')?.hasError('required')) {
-                    <mat-error>Tax ID is required</mat-error>
-                  } @else if (businessForm.get('taxId')?.hasError('pattern')) {
-                    <mat-error>Format: XX-XXXXXXX</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Business Type</mat-label>
-                  <mat-select formControlName="businessType" required>
-                    @for (type of businessTypes(); track type.type) {
-                      <mat-option [value]="type.type">{{ type.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>State</mat-label>
-                  <mat-select formControlName="stateCode" required>
-                    @for (state of states(); track state.code) {
-                      <mat-option [value]="state.code">{{ state.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Years in Business</mat-label>
-                  <input matInput type="number" formControlName="yearsInBusiness" min="1">
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Number of Employees</mat-label>
-                  <input matInput type="number" formControlName="employeeCount" min="1">
-                </mat-form-field>
-              </div>
-
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Annual Revenue</mat-label>
-                  <span matTextPrefix>$ </span>
-                  <input matInput type="number" formControlName="annualRevenue">
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Annual Payroll</mat-label>
-                  <span matTextPrefix>$ </span>
-                  <input matInput type="number" formControlName="annualPayroll">
-                </mat-form-field>
-              </div>
-            </form>
-
-            <div class="button-row">
-              <button mat-raised-button color="primary" matStepperNext
-                      [disabled]="!businessForm.valid">
-                Next
-              </button>
-            </div>
-          </div>
-        </mat-step>
-
-        <!-- Step 2: Coverage Selection -->
-        <mat-step [stepControl]="coverageForm" label="Coverage">
-          <div class="step-content">
-            <h2>Coverage Options</h2>
-
-            <form [formGroup]="coverageForm">
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Product Type</mat-label>
-                  <mat-select formControlName="productType" required>
-                    @for (product of products(); track product.type) {
-                      <mat-option [value]="product.type">{{ product.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Classification Code</mat-label>
-                  <mat-select formControlName="classificationCode">
-                    @for (code of classificationCodes(); track code.code) {
-                      <mat-option [value]="code.code">
-                        {{ code.code }} - {{ code.description }}
-                      </mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
-
-              <div class="form-row">
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Coverage Limit</mat-label>
-                  <mat-select formControlName="coverageLimit">
-                    <mat-option [value]="300000">$300,000</mat-option>
-                    <mat-option [value]="500000">$500,000</mat-option>
-                    <mat-option [value]="1000000">$1,000,000</mat-option>
-                    <mat-option [value]="2000000">$2,000,000</mat-option>
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="form-field">
-                  <mat-label>Deductible</mat-label>
-                  <mat-select formControlName="deductible">
-                    <mat-option [value]="500">$500</mat-option>
-                    <mat-option [value]="1000">$1,000</mat-option>
-                    <mat-option [value]="2500">$2,500</mat-option>
-                    <mat-option [value]="5000">$5,000</mat-option>
-                    <mat-option [value]="10000">$10,000</mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </div>
-
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Effective Date</mat-label>
-                <input matInput type="date" formControlName="effectiveDate">
-              </mat-form-field>
-
-              <!-- Dynamic Fields based on Product Type -->
-              @for (field of dynamicFields(); track field.key + '-' + currentBusinessId()) {
-                <app-dynamic-field
-                  [config]="field"
-                  [value]="getDynamicFieldValue(field.key)"
-                  (valueChange)="setDynamicFieldValue(field.key, $event)">
-                </app-dynamic-field>
-              }
-            </form>
-
-            <!-- Premium Estimate -->
-            @if (premiumEstimate()) {
-              <mat-card class="estimate-card">
-                <mat-card-content>
-                  <div class="estimate-display">
-                    <span class="estimate-label">Estimated Premium</span>
-                    <span class="estimate-amount">
-                      {{ premiumEstimate()!.estimatedAnnualPremium | currency }}
-                    </span>
-                    <span class="estimate-note">per year</span>
-                  </div>
-                </mat-card-content>
-              </mat-card>
-            }
-
-            <div class="button-row">
-              <button mat-button matStepperPrevious>Back</button>
-              <button mat-raised-button color="primary" matStepperNext
-                      [disabled]="!coverageForm.valid">
-                Next
-              </button>
-            </div>
-          </div>
-        </mat-step>
-
-        <!-- Step 3: Risk Factors (Optional) -->
-        <mat-step label="Risk Factors" [optional]="true">
-          <div class="step-content">
-            <h2>Additional Risk Information</h2>
-            <p class="step-description">
-              Providing this information may help improve your quote.
-            </p>
-
-            <app-risk-factors
-              [resetTrigger]="riskFactorsResetTrigger()"
-              [initialFactors]="riskFactors()"
-              (factorsChange)="onRiskFactorsChange($event)">
-            </app-risk-factors>
-
-            <div class="button-row">
-              <button mat-button matStepperPrevious>Back</button>
-              <button mat-raised-button color="primary" matStepperNext>
-                Next
-              </button>
-            </div>
-          </div>
-        </mat-step>
-
-        <!-- Step 4: Review & Submit -->
-        <mat-step label="Review">
-          <div class="step-content">
-            <h2>Review & Submit</h2>
-
-            @if (quoteService.isLoading()) {
-              <div class="loading-container">
-                <mat-spinner diameter="60"></mat-spinner>
-                <p>Calculating your quote...</p>
-              </div>
-            } @else if (quoteService.currentQuote()) {
-              <app-quote-result
-                [quote]="quoteService.currentQuote()!"
-                (save)="onSaveQuote($event)"
-                (bind)="onBindQuote($event)">
-              </app-quote-result>
-              <div class="button-row">
-                <button mat-raised-button color="accent" (click)="startNewQuote()">
-                  <mat-icon>add</mat-icon>
-                  Start New Quote
-                </button>
-              </div>
-            } @else {
-              <!-- Review Summary -->
-              <mat-card class="review-card">
-                <mat-card-header>
-                  <mat-card-title>Quote Summary</mat-card-title>
-                </mat-card-header>
-                <mat-card-content>
-                  <div class="review-section">
-                    <h4>Business</h4>
-                    <p>{{ businessForm.get('businessName')?.value }}</p>
-                    <p>{{ businessForm.get('stateCode')?.value }} | {{ getBusinessTypeName() }}</p>
-                  </div>
-
-                  <div class="review-section">
-                    <h4>Coverage</h4>
-                    <p>{{ getProductTypeName() }}</p>
-                    <p>Limit: {{ coverageForm.get('coverageLimit')?.value | currency }}</p>
-                    <p>Deductible: {{ coverageForm.get('deductible')?.value | currency }}</p>
-                  </div>
-
-                  @if (premiumEstimate()) {
-                    <div class="review-section estimate">
-                      <h4>Estimated Premium</h4>
-                      <p class="estimate-amount">
-                        {{ premiumEstimate()!.estimatedAnnualPremium | currency }}/year
-                      </p>
-                    </div>
-                  }
-                </mat-card-content>
-              </mat-card>
-
-              @if (quoteService.error()) {
-                <div class="error-message">
-                  <mat-icon>error</mat-icon>
-                  {{ quoteService.error() }}
-                </div>
-              }
-
-              <div class="button-row">
-                <button mat-button matStepperPrevious>Back</button>
-                <button mat-raised-button color="primary"
-                        (click)="submitQuote()"
-                        [disabled]="!businessForm.valid || !coverageForm.valid">
-                  <mat-icon>calculate</mat-icon>
-                  Get Final Quote
-                </button>
-              </div>
-            }
-          </div>
-        </mat-step>
-      </mat-stepper>
-    </div>
-  `,
-  styles: [`
-    .quote-form-container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    h1 {
-      margin-bottom: 24px;
-    }
-
-    .step-content {
-      padding: 24px 0;
-    }
-
-    .step-description {
-      color: rgba(0, 0, 0, 0.54);
-      margin-bottom: 24px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 8px;
-    }
-
-    .form-field {
-      flex: 1;
-    }
-
-    .full-width {
-      width: 100%;
-    }
-
-    mat-divider {
-      margin: 24px 0;
-    }
-
-    .button-row {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      justify-content: flex-end;
-    }
-
-    .estimate-card {
-      margin: 24px 0;
-      background-color: #e3f2fd;
-    }
-
-    .estimate-display {
-      text-align: center;
-    }
-
-    .estimate-label {
-      display: block;
-      font-size: 0.875rem;
-      color: rgba(0, 0, 0, 0.54);
-    }
-
-    .estimate-amount {
-      display: block;
-      font-size: 2rem;
-      font-weight: 500;
-      color: #1976d2;
-    }
-
-    .estimate-note {
-      display: block;
-      font-size: 0.75rem;
-      color: rgba(0, 0, 0, 0.54);
-    }
-
-    .loading-container {
-      text-align: center;
-      padding: 48px;
-    }
-
-    .loading-container p {
-      margin-top: 16px;
-      color: rgba(0, 0, 0, 0.54);
-    }
-
-    .review-card {
-      margin: 16px 0;
-    }
-
-    .review-section {
-      margin-bottom: 16px;
-    }
-
-    .review-section h4 {
-      margin: 0 0 8px 0;
-      color: rgba(0, 0, 0, 0.54);
-      font-size: 0.875rem;
-    }
-
-    .review-section.estimate {
-      text-align: center;
-      padding: 16px;
-      background-color: #f5f5f5;
-      border-radius: 4px;
-    }
-
-    .error-message {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #c62828;
-      padding: 16px;
-      background-color: #ffebee;
-      border-radius: 4px;
-      margin: 16px 0;
-    }
-
-    @media (max-width: 768px) {
-      .form-row {
-        flex-direction: column;
-        gap: 0;
-      }
-    }
-  `]
+  templateUrl: './quote-form.component.html',
+  styleUrl: './quote-form.component.scss'
 })
 export class QuoteFormComponent {
   private fb = inject(FormBuilder);
@@ -490,12 +84,12 @@ export class QuoteFormComponent {
 
   // Data isolation per business
   currentBusinessId = signal<string | null>(null);
-  private allDynamicFieldValues = signal<Map<string, Record<string, any>>>(new Map());
+  private allDynamicFieldValues = signal<Map<string, Record<string, unknown>>>(new Map());
   private allRiskFactors = signal<Map<string, RiskFactor[]>>(new Map());
-  private allCoverageFormValues = signal<Map<string, Record<string, any>>>(new Map());
-  private allBusinessFormValues = signal<Map<string, Record<string, any>>>(new Map());
+  private allCoverageFormValues = signal<Map<string, Record<string, unknown>>>(new Map());
+  private allBusinessFormValues = signal<Map<string, Record<string, unknown>>>(new Map());
 
-  private defaultCoverageValues(): Record<string, any> {
+  private defaultCoverageValues(): Record<string, unknown> {
     return {
       productType: 'GeneralLiability',
       classificationCode: '41650',
@@ -522,7 +116,7 @@ export class QuoteFormComponent {
     return allValues.get(businessId) ?? this.defaultDynamicValues();
   });
 
-  private defaultDynamicValues(): Record<string, any> {
+  private defaultDynamicValues(): Record<string, unknown> {
     return {
       annualRevenue: 500000,
       annualPayroll: 300000,
@@ -681,12 +275,12 @@ export class QuoteFormComponent {
     });
   }
 
-  getDynamicFieldValue(key: string): any {
+  getDynamicFieldValue(key: string): string | number | boolean {
     const values = this.dynamicFieldValues();
-    return values[key] ?? '';
+    return (values[key] as string | number | boolean) ?? '';
   }
 
-  setDynamicFieldValue(key: string, value: any): void {
+  setDynamicFieldValue(key: string, value: string | number | boolean): void {
     const businessId = this.currentBusinessId();
     if (!businessId) return;
 
@@ -705,16 +299,16 @@ export class QuoteFormComponent {
   submitQuote(): void {
     if (!this.isFormComplete()) return;
 
-    const request: QuoteRequest = {
-      ...this.businessForm.value as any,
-      ...this.coverageForm.value as any,
+    const request = {
+      ...this.businessForm.value,
+      ...this.coverageForm.value,
       riskFactors: this.riskFactors()
-    };
+    } as QuoteRequest;
 
     this.quoteService.calculateQuote(request);
   }
 
-  onSaveQuote(quote: any): void {
+  onSaveQuote(quote: QuoteResponse): void {
     this.quoteService.saveQuote(quote);
     this.snackBar.open(`Quote ${quote.quoteNumber} saved successfully`, 'Close', {
       duration: 3000,
@@ -723,7 +317,7 @@ export class QuoteFormComponent {
     });
   }
 
-  onBindQuote(quote: any): void {
+  onBindQuote(quote: QuoteResponse): void {
     console.log('Bind quote:', quote);
     // Would integrate with policy binding functionality
   }

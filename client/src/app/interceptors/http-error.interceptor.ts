@@ -12,8 +12,6 @@ import { LoadingService } from '../services/loading.service';
  * - Transforms error responses for consistent handling
  */
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
-  const loadingService = inject(LoadingService);
-
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'An unknown error occurred';

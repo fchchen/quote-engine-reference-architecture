@@ -1,0 +1,86 @@
+.quote-result-card {
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+mat-card-header {
+  position: relative;
+}
+
+.status-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.section {
+  padding: 16px 0;
+}
+
+.section h3 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.adjustment {
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 0.875rem;
+}
+
+.adjustment.discount {
+  color: #2e7d32;
+}
+
+.premium-total {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.premium-display {
+  font-size: 2.5rem;
+  font-weight: 500;
+  color: #1976d2;
+}
+
+.premium-label {
+  font-size: 1rem;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.monthly-premium {
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 0.875rem;
+}
+
+.risk-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.risk-score {
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.declined {
+  text-align: center;
+  color: #c62828;
+}
+
+.processing-time {
+  display: block;
+  text-align: right;
+  padding: 8px 16px;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+mat-card-actions {
+  padding: 16px;
+}

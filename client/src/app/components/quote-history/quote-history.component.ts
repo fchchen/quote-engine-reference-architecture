@@ -30,146 +30,8 @@ import { QuoteResponse } from '../../models/quote.model';
     MatIconModule,
     MatChipsModule
   ],
-  template: `
-    <div class="quote-history-container">
-      <h2>Quote History</h2>
-
-      @if (history().length === 0) {
-        <p class="no-quotes">No quotes yet. Start by creating a new quote.</p>
-      } @else {
-        <table mat-table [dataSource]="displayedQuotes()" matSort (matSortChange)="onSort($event)">
-          <!-- Quote Number Column -->
-          <ng-container matColumnDef="quoteNumber">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Quote #</th>
-            <td mat-cell *matCellDef="let quote">{{ quote.quoteNumber }}</td>
-          </ng-container>
-
-          <!-- Date Column -->
-          <ng-container matColumnDef="quoteDate">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-            <td mat-cell *matCellDef="let quote">{{ quote.quoteDate | date:'short' }}</td>
-          </ng-container>
-
-          <!-- Business Name Column -->
-          <ng-container matColumnDef="businessName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Business</th>
-            <td mat-cell *matCellDef="let quote">{{ quote.businessName }}</td>
-          </ng-container>
-
-          <!-- Product Column -->
-          <ng-container matColumnDef="productType">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Product</th>
-            <td mat-cell *matCellDef="let quote">
-              {{ formatProductType(quote.productType) }}
-            </td>
-          </ng-container>
-
-          <!-- Premium Column -->
-          <ng-container matColumnDef="premium">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Premium</th>
-            <td mat-cell *matCellDef="let quote" class="currency">
-              @if (quote.isEligible) {
-                {{ quote.premium.annualPremium | currency }}
-              } @else {
-                -
-              }
-            </td>
-          </ng-container>
-
-          <!-- Status Column -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let quote">
-              <span class="status-badge" [class]="'status-' + quote.status.toLowerCase()">
-                {{ quote.status }}
-              </span>
-            </td>
-          </ng-container>
-
-          <!-- Actions Column -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let quote">
-              <button mat-icon-button (click)="onView(quote)" title="View">
-                <mat-icon>visibility</mat-icon>
-              </button>
-              @if (quote.isEligible) {
-                <button mat-icon-button (click)="onBind(quote)" title="Bind">
-                  <mat-icon>check_circle</mat-icon>
-                </button>
-              }
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              (click)="onView(row)"
-              class="clickable-row">
-          </tr>
-        </table>
-
-        <mat-paginator
-          [length]="history().length"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[5, 10, 25]"
-          (page)="onPage($event)">
-        </mat-paginator>
-
-        <!-- Summary Stats -->
-        <div class="summary-stats">
-          <span>Total: {{ history().length }} quotes</span>
-          <span>Quoted: {{ quotedCount() }}</span>
-          <span>Total Premium: {{ totalPremium() | currency }}</span>
-        </div>
-      }
-    </div>
-  `,
-  styles: [`
-    .quote-history-container {
-      margin: 20px 0;
-    }
-
-    h2 {
-      margin-bottom: 16px;
-    }
-
-    .no-quotes {
-      text-align: center;
-      color: rgba(0, 0, 0, 0.54);
-      padding: 40px;
-    }
-
-    table {
-      width: 100%;
-    }
-
-    .clickable-row {
-      cursor: pointer;
-    }
-
-    .clickable-row:hover {
-      background-color: #f5f5f5;
-    }
-
-    .currency {
-      font-family: 'Roboto Mono', monospace;
-      text-align: right;
-    }
-
-    .summary-stats {
-      display: flex;
-      gap: 24px;
-      padding: 16px;
-      background-color: #f5f5f5;
-      border-radius: 4px;
-      margin-top: 16px;
-      font-size: 0.875rem;
-    }
-
-    .summary-stats span {
-      color: rgba(0, 0, 0, 0.54);
-    }
-  `]
+  templateUrl: './quote-history.component.html',
+  styleUrl: './quote-history.component.scss'
 })
 export class QuoteHistoryComponent {
   // Signal-based input
@@ -188,7 +50,7 @@ export class QuoteHistoryComponent {
 
   // Computed values
   displayedQuotes = computed(() => {
-    let quotes = [...this.history()];
+    const quotes = [...this.history()];
 
     // Sort
     quotes.sort((a, b) => {
@@ -239,14 +101,14 @@ export class QuoteHistoryComponent {
     return type.replace(/([A-Z])/g, ' $1').trim();
   }
 
-  private getSortValue(quote: QuoteResponse, field: string): any {
+  private getSortValue(quote: QuoteResponse, field: string): string | number {
     switch (field) {
       case 'quoteDate':
         return new Date(quote.quoteDate).getTime();
       case 'premium':
         return quote.premium?.annualPremium ?? 0;
       default:
-        return (quote as any)[field];
+        return String((quote as unknown as Record<string, unknown>)[field] ?? '');
     }
   }
 }

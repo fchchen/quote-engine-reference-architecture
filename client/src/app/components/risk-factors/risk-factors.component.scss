@@ -1,0 +1,40 @@
+mat-card {
+  margin: 16px 0;
+}
+
+.factor-section {
+  margin: 24px 0;
+}
+
+.factor-section > .section-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+mat-slider {
+  width: 100%;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.factor-hint {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.54);
+  margin-top: 8px;
+}
+
+.full-width {
+  width: 100%;
+}

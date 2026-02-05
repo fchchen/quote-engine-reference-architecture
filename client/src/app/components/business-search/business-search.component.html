@@ -1,0 +1,38 @@
+<mat-form-field appearance="outline" class="full-width">
+  <mat-label>Search Business</mat-label>
+  <input
+    matInput
+    [value]="searchTerm()"
+    (input)="onSearchInput($event)"
+    [matAutocomplete]="auto"
+    placeholder="Enter business name or Tax ID">
+  <mat-icon matSuffix>search</mat-icon>
+
+  @if (isSearching()) {
+    <mat-spinner matSuffix diameter="20"></mat-spinner>
+  }
+
+  <mat-autocomplete
+    #auto="matAutocomplete"
+    (optionSelected)="onSelect($event)"
+    [displayWith]="displayFn">
+    @for (business of searchResults(); track business.id) {
+      <mat-option [value]="business">
+        <div class="business-option">
+          <span class="business-name">{{ business.businessName }}</span>
+          <span class="business-details">
+            {{ business.stateCode }} | {{ business.taxId }}
+          </span>
+        </div>
+      </mat-option>
+    }
+
+    @if (searchResults().length === 0 && searchTerm().length >= 2 && !isSearching()) {
+      <mat-option disabled>
+        No businesses found
+      </mat-option>
+    }
+  </mat-autocomplete>
+
+  <mat-hint>Start typing to search by name or Tax ID</mat-hint>
+</mat-form-field>

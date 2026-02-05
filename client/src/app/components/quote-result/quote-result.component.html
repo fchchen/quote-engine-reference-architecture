@@ -1,0 +1,150 @@
+<mat-card class="quote-result-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>description</mat-icon>
+    <mat-card-title>Quote #{{ quote().quoteNumber }}</mat-card-title>
+    <mat-card-subtitle>
+      Generated {{ quote().quoteDate | date:'medium' }}
+    </mat-card-subtitle>
+    <span class="status-badge" [class]="'status-' + quote().status.toLowerCase()">
+      {{ quote().status }}
+    </span>
+  </mat-card-header>
+
+  <mat-card-content>
+    <!-- Business Info -->
+    <div class="section">
+      <h3>Business Information</h3>
+      <p><strong>{{ quote().businessName }}</strong></p>
+      <p>{{ quote().productType | formatProductType }} - {{ quote().stateCode }}</p>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Coverage Details -->
+    <div class="section">
+      <h3>Coverage</h3>
+      <div class="detail-row">
+        <span>Coverage Limit:</span>
+        <span class="currency">{{ quote().coverageLimit | currency }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Deductible:</span>
+        <span class="currency">{{ quote().deductible | currency }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Effective Date:</span>
+        <span>{{ quote().effectiveDate | date }}</span>
+      </div>
+      <div class="detail-row">
+        <span>Expiration Date:</span>
+        <span>{{ quote().policyExpirationDate | date }}</span>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    @if (quote().isEligible) {
+      <!-- Premium Breakdown -->
+      <div class="section">
+        <h3>Premium Breakdown</h3>
+        <div class="detail-row">
+          <span>Base Premium:</span>
+          <span class="currency">{{ quote().premium.basePremium | currency }}</span>
+        </div>
+
+        @for (adj of quote().premium.adjustments; track adj.code) {
+          <div class="detail-row adjustment" [class.discount]="adj.amount < 0">
+            <span>{{ adj.description }}:</span>
+            <span class="currency">
+              {{ adj.amount >= 0 ? '+' : '' }}{{ adj.amount | currency }}
+            </span>
+          </div>
+        }
+
+        <div class="detail-row">
+          <span>Subtotal:</span>
+          <span class="currency">{{ quote().premium.subtotal | currency }}</span>
+        </div>
+        <div class="detail-row">
+          <span>State Tax:</span>
+          <span class="currency">{{ quote().premium.stateTax | currency }}</span>
+        </div>
+        <div class="detail-row">
+          <span>Policy Fee:</span>
+          <span class="currency">{{ quote().premium.policyFee | currency }}</span>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="premium-total">
+          <div class="premium-display">
+            {{ quote().premium.annualPremium | currency }}
+            <span class="premium-label">/year</span>
+          </div>
+          <div class="monthly-premium">
+            or {{ quote().premium.monthlyPremium | currency }}/month
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Risk Assessment -->
+      <div class="section">
+        <h3>Risk Assessment</h3>
+        <div class="risk-info">
+          <span class="risk-tier" [class]="'risk-' + quote().riskAssessment.riskTier.toLowerCase()">
+            {{ quote().riskAssessment.riskTier }}
+          </span>
+          <span class="risk-score">
+            Score: {{ quote().riskAssessment.riskScore }}/100
+          </span>
+        </div>
+
+        @if (quote().riskAssessment.notes.length > 0) {
+          <mat-list dense>
+            @for (note of quote().riskAssessment.notes; track note) {
+              <mat-list-item>
+                <mat-icon matListItemIcon>info</mat-icon>
+                <span matListItemTitle>{{ note }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        }
+      </div>
+    } @else {
+      <!-- Declined Message -->
+      <div class="section declined">
+        <h3>Quote Declined</h3>
+        @for (msg of quote().eligibilityMessages; track msg) {
+          <p class="error-message">{{ msg }}</p>
+        }
+      </div>
+    }
+  </mat-card-content>
+
+  @if (showActions()) {
+    <mat-card-actions align="end">
+      <button mat-button (click)="onPrint()">
+        <mat-icon>print</mat-icon>
+        Print
+      </button>
+      <button mat-button (click)="onSave()">
+        <mat-icon>save</mat-icon>
+        Save
+      </button>
+      @if (quote().isEligible) {
+        <button mat-raised-button color="primary" (click)="onBind()">
+          <mat-icon>check_circle</mat-icon>
+          Bind Policy
+        </button>
+      }
+    </mat-card-actions>
+  }
+
+  <mat-card-footer>
+    <small class="processing-time">
+      Processed in {{ quote().processingTimeMs }}
+    </small>
+  </mat-card-footer>
+</mat-card>

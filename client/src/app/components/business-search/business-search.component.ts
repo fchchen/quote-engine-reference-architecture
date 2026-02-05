@@ -33,70 +33,8 @@ import { Business } from '../../models/business.model';
     MatIconModule,
     MatProgressSpinnerModule
   ],
-  template: `
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Search Business</mat-label>
-      <input
-        matInput
-        [value]="searchTerm()"
-        (input)="onSearchInput($event)"
-        [matAutocomplete]="auto"
-        placeholder="Enter business name or Tax ID">
-      <mat-icon matSuffix>search</mat-icon>
-
-      @if (isSearching()) {
-        <mat-spinner matSuffix diameter="20"></mat-spinner>
-      }
-
-      <mat-autocomplete
-        #auto="matAutocomplete"
-        (optionSelected)="onSelect($event)"
-        [displayWith]="displayFn">
-        @for (business of searchResults(); track business.id) {
-          <mat-option [value]="business">
-            <div class="business-option">
-              <span class="business-name">{{ business.businessName }}</span>
-              <span class="business-details">
-                {{ business.stateCode }} | {{ business.taxId }}
-              </span>
-            </div>
-          </mat-option>
-        }
-
-        @if (searchResults().length === 0 && searchTerm().length >= 2 && !isSearching()) {
-          <mat-option disabled>
-            No businesses found
-          </mat-option>
-        }
-      </mat-autocomplete>
-
-      <mat-hint>Start typing to search by name or Tax ID</mat-hint>
-    </mat-form-field>
-  `,
-  styles: [`
-    .full-width {
-      width: 100%;
-    }
-
-    .business-option {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.2;
-    }
-
-    .business-name {
-      font-weight: 500;
-    }
-
-    .business-details {
-      font-size: 0.75rem;
-      color: rgba(0, 0, 0, 0.54);
-    }
-
-    mat-spinner {
-      margin-right: 8px;
-    }
-  `]
+  templateUrl: './business-search.component.html',
+  styleUrl: './business-search.component.scss'
 })
 export class BusinessSearchComponent {
   private lookupService = inject(BusinessLookupService);

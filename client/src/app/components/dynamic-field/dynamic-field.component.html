@@ -1,0 +1,143 @@
+@switch (config().type) {
+  @case ('text') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <input
+        matInput
+        type="text"
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [placeholder]="config().placeholder ?? ''"
+        [required]="config().required">
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('number') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <input
+        matInput
+        type="number"
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [min]="config().min ?? null"
+        [max]="config().max ?? null"
+        [step]="config().step ?? 1"
+        [required]="config().required">
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('currency') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <span matTextPrefix>$ </span>
+      <input
+        matInput
+        type="number"
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [min]="config().min ?? 0"
+        [max]="config().max ?? null"
+        [required]="config().required">
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('select') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <mat-select
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [required]="config().required">
+        @for (opt of config().options; track opt.value) {
+          <mat-option [value]="opt.value" [disabled]="opt.disabled">
+            {{ opt.label }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('checkbox') {
+    <mat-checkbox
+      [ngModel]="value()"
+      (ngModelChange)="valueChange.emit($event)"
+      [required]="config().required">
+      {{ config().label }}
+    </mat-checkbox>
+    @if (config().hint) {
+      <p class="checkbox-hint">{{ config().hint }}</p>
+    }
+  }
+
+  @case ('date') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <input
+        matInput
+        [matDatepicker]="picker"
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [required]="config().required">
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-datepicker #picker></mat-datepicker>
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('email') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <input
+        matInput
+        type="email"
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [required]="config().required">
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @case ('textarea') {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <textarea
+        matInput
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [required]="config().required"
+        rows="4">
+      </textarea>
+      @if (config().hint) {
+        <mat-hint>{{ config().hint }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+
+  @default {
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ config().label }}</mat-label>
+      <input
+        matInput
+        [ngModel]="value()"
+        (ngModelChange)="valueChange.emit($event)"
+        [required]="config().required">
+    </mat-form-field>
+  }
+}
