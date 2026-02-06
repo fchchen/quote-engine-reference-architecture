@@ -1,0 +1,57 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--tf-font-family, 'Roboto', sans-serif);
+  background-color: var(--tf-background, #fafafa);
+  color: var(--tf-text, #212121);
+}
+
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 300;
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.create-form-card {
+  margin-bottom: 24px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.active-link {
+  border-bottom: 2px solid white;
+}

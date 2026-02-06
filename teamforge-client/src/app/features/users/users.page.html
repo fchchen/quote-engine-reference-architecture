@@ -1,0 +1,92 @@
+<app-themed-toolbar></app-themed-toolbar>
+<div class="page-container">
+  <div class="page-header">
+    <h1>Users</h1>
+    <button mat-raised-button color="primary" (click)="showInviteForm.set(!showInviteForm())">
+      <mat-icon>person_add</mat-icon> Invite User
+    </button>
+  </div>
+
+  @if (showInviteForm()) {
+    <mat-card class="create-form-card">
+      <mat-card-content>
+        <form [formGroup]="inviteForm" (ngSubmit)="inviteUser()">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email</mat-label>
+            <input matInput formControlName="email" type="email">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Display Name</mat-label>
+            <input matInput formControlName="displayName">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Password</mat-label>
+            <input matInput formControlName="password" type="password">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Role</mat-label>
+            <mat-select formControlName="role">
+              @for (role of roles(); track role.id) {
+                <mat-option [value]="role.name">{{ role.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <div class="form-actions">
+            <button mat-button type="button" (click)="showInviteForm.set(false)">Cancel</button>
+            <button mat-raised-button color="primary" type="submit" [disabled]="inviteForm.invalid">Invite</button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (isLoading()) {
+    <div class="loading-spinner">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  } @else {
+    <div class="card-grid">
+      @for (user of users(); track user.id) {
+        <mat-card>
+          <mat-card-header>
+            <mat-icon mat-card-avatar>person</mat-icon>
+            <mat-card-title>{{ user.displayName }}</mat-card-title>
+            <mat-card-subtitle>{{ user.email }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            @if (editingUserId() === user.id) {
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Roles</mat-label>
+                <mat-select multiple [value]="selectedRoles()" (selectionChange)="onRolesChanged($event.value)">
+                  @for (role of roles(); track role.id) {
+                    <mat-option [value]="role.name">{{ role.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <div class="form-actions">
+                <button mat-button (click)="cancelEditingRoles()">Cancel</button>
+                <button mat-raised-button color="primary" (click)="updateRoles()">Save Roles</button>
+              </div>
+            } @else {
+              <mat-chip-set>
+                @for (role of user.roles; track role) {
+                  <mat-chip>{{ role }}</mat-chip>
+                }
+              </mat-chip-set>
+              @if (user.lastLoginAt) {
+                <p class="last-login">Last login: {{ user.lastLoginAt | date:'medium' }}</p>
+              }
+            }
+          </mat-card-content>
+          @if (editingUserId() !== user.id) {
+            <mat-card-actions align="end">
+              <button mat-button (click)="startEditingRoles(user)">
+                <mat-icon>edit</mat-icon> Roles
+              </button>
+            </mat-card-actions>
+          }
+        </mat-card>
+      }
+    </div>
+  }
+</div>
