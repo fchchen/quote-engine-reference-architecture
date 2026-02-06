@@ -552,6 +552,109 @@ public class ApiIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 
     #endregion
 
+    #region Quote History
+
+    [Fact]
+    public async Task GetQuoteHistory_AfterCreatingQuote_ReturnsNonEmpty()
+    {
+        // Arrange - Create a quote first
+        var token = await GetDemoTokenAsync();
+        var taxId = "12-3456789";
+        var quoteRequest = new QuoteRequest
+        {
+            BusinessName = "History Test LLC",
+            TaxId = taxId,
+            BusinessType = BusinessType.Technology,
+            StateCode = "CA",
+            ClassificationCode = "8810",
+            ProductType = ProductType.GeneralLiability,
+            AnnualPayroll = 500000m,
+            AnnualRevenue = 1000000m,
+            EmployeeCount = 10,
+            YearsInBusiness = 5,
+            CoverageLimit = 1000000m,
+            Deductible = 1000m
+        };
+
+        var createRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/quote")
+        {
+            Content = JsonContent.Create(quoteRequest, options: JsonOptions)
+        };
+        createRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var createResponse = await _client.SendAsync(createRequest);
+        createResponse.EnsureSuccessStatusCode();
+
+        // Act - Get history
+        var historyRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/quote/history/{taxId}");
+        historyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var historyResponse = await _client.SendAsync(historyRequest);
+
+        // Assert
+        historyResponse.EnsureSuccessStatusCode();
+        var history = await historyResponse.Content.ReadFromJsonAsync<List<QuoteResponse>>(JsonOptions);
+        Assert.NotNull(history);
+        Assert.NotEmpty(history);
+    }
+
+    #endregion
+
+    #region Premium Estimate
+
+    [Fact]
+    public async Task PremiumEstimate_ValidRequest_ReturnsEstimate()
+    {
+        // Arrange
+        var token = await GetDemoTokenAsync();
+        var estimateRequest = new PremiumEstimateRequest
+        {
+            ProductType = ProductType.GeneralLiability,
+            StateCode = "CA",
+            AnnualRevenue = 1000000m,
+            AnnualPayroll = 500000m,
+            EmployeeCount = 10,
+            CoverageLimit = 1000000m,
+            Deductible = 1000m
+        };
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/premium/estimate")
+        {
+            Content = JsonContent.Create(estimateRequest, options: JsonOptions)
+        };
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        // Act
+        var response = await _client.SendAsync(httpRequest);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var estimate = await response.Content.ReadFromJsonAsync<PremiumEstimateResponse>(JsonOptions);
+        Assert.NotNull(estimate);
+        Assert.True(estimate.EstimatedAnnualPremium > 0);
+        Assert.True(estimate.EstimatedMonthlyPremium > 0);
+        Assert.Contains("estimate", estimate.Note, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PremiumEstimate_NoAuth_Returns401()
+    {
+        // Arrange
+        var estimateRequest = new PremiumEstimateRequest
+        {
+            ProductType = ProductType.GeneralLiability,
+            StateCode = "CA",
+            CoverageLimit = 1000000m,
+            Deductible = 1000m
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/v1/premium/estimate", estimateRequest, JsonOptions);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    #endregion
+
     #region JSON Serialization
 
     [Fact]

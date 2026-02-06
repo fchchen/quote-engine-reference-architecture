@@ -23,6 +23,7 @@ import {
 export class QuoteService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
+  private functionsUrl = environment.functionsUrl.replace(/\/$/, '');
 
   // ========================================
   // STATE - All as Signals
@@ -128,9 +129,14 @@ export class QuoteService {
    * Called frequently during form input.
    */
   getPremiumEstimate(request: PremiumEstimateRequest): void {
+    if (!this.functionsUrl) {
+      this.premiumEstimate.set(null);
+      return;
+    }
+
     // Don't show loading for estimates (too fast)
     this.http.post<PremiumEstimateResponse>(
-      `${this.apiUrl}/premium/estimate`,
+      `${this.functionsUrl}/premium/estimate`,
       request
     ).pipe(
       tap(result => this.premiumEstimate.set(result)),

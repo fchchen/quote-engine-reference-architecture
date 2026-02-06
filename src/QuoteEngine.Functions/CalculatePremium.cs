@@ -17,10 +17,10 @@ public class CalculatePremium
     private readonly ILogger<CalculatePremium> _logger;
     private readonly MockDataService _dataService;
 
-    public CalculatePremium(ILogger<CalculatePremium> logger)
+    public CalculatePremium(ILogger<CalculatePremium> logger, MockDataService dataService)
     {
         _logger = logger;
-        _dataService = new MockDataService();
+        _dataService = dataService;
     }
 
     /// <summary>

@@ -21,6 +21,7 @@ public class QuoteService : IQuoteService
     // Thread-safe in-memory storage for demo purposes
     // In production, this would use the database via repository
     private static readonly Dictionary<string, QuoteResponse> _quoteStore = new();
+    private static readonly Dictionary<string, List<string>> _taxIdIndex = new();
     private static readonly object _lock = new();
 
     /// <summary>
@@ -115,8 +116,8 @@ public class QuoteService : IQuoteService
                 ProcessingTimeMs = $"{stopwatch.ElapsedMilliseconds}ms"
             };
 
-            // Store quote
-            StoreQuote(response);
+            // Store quote and index by taxId
+            StoreQuote(response, request.TaxId);
 
             stopwatch.Stop();
             _logger.LogInformation(
@@ -152,9 +153,21 @@ public class QuoteService : IQuoteService
     /// <inheritdoc />
     public Task<IEnumerable<QuoteResponse>> GetQuoteHistoryAsync(string taxId, CancellationToken cancellationToken = default)
     {
-        // In production, this would query the database
-        // For demo, return empty list
-        return Task.FromResult<IEnumerable<QuoteResponse>>(new List<QuoteResponse>());
+        lock (_lock)
+        {
+            if (!_taxIdIndex.TryGetValue(taxId, out var quoteNumbers))
+            {
+                return Task.FromResult<IEnumerable<QuoteResponse>>(new List<QuoteResponse>());
+            }
+
+            var quotes = quoteNumbers
+                .Where(qn => _quoteStore.ContainsKey(qn))
+                .Select(qn => _quoteStore[qn])
+                .OrderByDescending(q => q.QuoteDate)
+                .ToList();
+
+            return Task.FromResult<IEnumerable<QuoteResponse>>(quotes);
+        }
     }
 
     /// <inheritdoc />
@@ -233,19 +246,29 @@ public class QuoteService : IQuoteService
         };
     }
 
-    private void StoreQuote(QuoteResponse quote)
+    private void StoreQuote(QuoteResponse quote, string? taxId = null)
     {
         lock (_lock)
         {
             _quoteStore[quote.QuoteNumber] = quote;
+
+            if (!string.IsNullOrEmpty(taxId))
+            {
+                if (!_taxIdIndex.TryGetValue(taxId, out var quoteNumbers))
+                {
+                    quoteNumbers = new List<string>();
+                    _taxIdIndex[taxId] = quoteNumbers;
+                }
+                quoteNumbers.Add(quote.QuoteNumber);
+            }
         }
     }
 
     private static string GenerateQuoteNumber()
     {
-        // Format: QT-YYYYMMDD-XXXXX
+        // Format: QT-YYYYMMDD-XXXXXXXX (GUID-based to avoid collisions)
         var datePart = DateTime.UtcNow.ToString("yyyyMMdd");
-        var randomPart = Random.Shared.Next(10000, 99999);
-        return $"QT-{datePart}-{randomPart}";
+        var uniquePart = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        return $"QT-{datePart}-{uniquePart}";
     }
 }

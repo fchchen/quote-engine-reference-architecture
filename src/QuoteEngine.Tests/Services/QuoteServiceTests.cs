@@ -251,7 +251,121 @@ public class QuoteServiceTests
             w => w.Contains("underwriter", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task GetQuoteHistoryAsync_AfterCreatingQuote_ReturnsQuote()
+    {
+        // Arrange
+        var request = CreateValidQuoteRequest();
+        SetupMocksForSuccessfulQuote();
+
+        var createdQuote = await _sut.CalculateQuoteAsync(request);
+        Assert.NotNull(createdQuote);
+
+        // Act
+        var history = await _sut.GetQuoteHistoryAsync(request.TaxId);
+
+        // Assert
+        var historyList = history.ToList();
+        Assert.NotEmpty(historyList);
+        Assert.Contains(historyList, q => q.QuoteNumber == createdQuote.QuoteNumber);
+    }
+
+    [Fact]
+    public async Task GetQuoteHistoryAsync_DifferentTaxIds_ReturnSeparateHistories()
+    {
+        // Arrange
+        SetupMocksForSuccessfulQuote();
+
+        var request1 = CreateValidQuoteRequest();
+        request1.TaxId = "11-1111111";
+        var quote1 = await _sut.CalculateQuoteAsync(request1);
+
+        var request2 = CreateValidQuoteRequest();
+        request2.TaxId = "22-2222222";
+        var quote2 = await _sut.CalculateQuoteAsync(request2);
+
+        // Act
+        var history1 = (await _sut.GetQuoteHistoryAsync("11-1111111")).ToList();
+        var history2 = (await _sut.GetQuoteHistoryAsync("22-2222222")).ToList();
+
+        // Assert
+        Assert.Single(history1);
+        Assert.Single(history2);
+        Assert.Equal(quote1!.QuoteNumber, history1[0].QuoteNumber);
+        Assert.Equal(quote2!.QuoteNumber, history2[0].QuoteNumber);
+    }
+
+    [Fact]
+    public async Task GetQuoteHistoryAsync_UnknownTaxId_ReturnsEmpty()
+    {
+        // Act
+        var history = await _sut.GetQuoteHistoryAsync("99-9999999");
+
+        // Assert
+        Assert.Empty(history);
+    }
+
+    [Fact]
+    public async Task CalculateQuoteAsync_TwoSequentialCalls_ProduceDistinctQuoteNumbers()
+    {
+        // Arrange
+        var request = CreateValidQuoteRequest();
+        var rateEntry = CreateRateEntry();
+        var riskAssessment = CreateStandardRiskAssessment();
+        var premium = CreatePremiumBreakdown();
+
+        _rateTableServiceMock
+            .Setup(x => x.GetRateAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<ProductType>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rateEntry);
+
+        _riskCalculatorMock
+            .Setup(x => x.CalculateRisk(It.IsAny<QuoteRequest>()))
+            .Returns(riskAssessment);
+
+        _riskCalculatorMock
+            .Setup(x => x.CalculatePremium(
+                It.IsAny<QuoteRequest>(),
+                It.IsAny<RiskAssessment>(),
+                It.IsAny<RateTableEntry>()))
+            .Returns(premium);
+
+        // Act
+        var result1 = await _sut.CalculateQuoteAsync(request);
+        var result2 = await _sut.CalculateQuoteAsync(request);
+
+        // Assert
+        Assert.NotNull(result1);
+        Assert.NotNull(result2);
+        Assert.NotEqual(result1.QuoteNumber, result2.QuoteNumber);
+    }
+
     #region Helper Methods
+
+    private void SetupMocksForSuccessfulQuote()
+    {
+        _rateTableServiceMock
+            .Setup(x => x.GetRateAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<ProductType>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRateEntry());
+
+        _riskCalculatorMock
+            .Setup(x => x.CalculateRisk(It.IsAny<QuoteRequest>()))
+            .Returns(CreateStandardRiskAssessment());
+
+        _riskCalculatorMock
+            .Setup(x => x.CalculatePremium(
+                It.IsAny<QuoteRequest>(),
+                It.IsAny<RiskAssessment>(),
+                It.IsAny<RateTableEntry>()))
+            .Returns(CreatePremiumBreakdown());
+    }
 
     private static QuoteRequest CreateValidQuoteRequest()
     {

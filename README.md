@@ -248,6 +248,20 @@ The final quote shows a full premium breakdown with base premium, discounts, tax
    sqlcmd -S localhost\SQLEXPRESS -i database/seed-data.sql
    ```
 
+### Configuration
+
+The API requires a JWT signing key. In development mode, a random key is generated automatically if none is configured. For CI or production, set the key explicitly:
+
+```bash
+# Environment variable (recommended for CI/production)
+export Jwt__Key="YourSecretKeyAtLeast32Characters!"
+
+# Or .NET user secrets (local development)
+dotnet user-secrets set "Jwt:Key" "YourSecretKeyAtLeast32Characters!" --project src/QuoteEngine.Api
+```
+
+The development config (`appsettings.Development.json`) includes a demo key for convenience.
+
 ### Azure Functions (Free Tier)
 
 ```bash
@@ -264,6 +278,10 @@ The project is deployed to Azure on the free tier:
 |-----------|-----|
 | API | https://quote-engine-api.azurewebsites.net/api/v1 |
 | Frontend | https://lively-coast-0804ea410.6.azurestaticapps.net |
+
+Configuration notes:
+- Set `Jwt__Key` in API app settings (do not commit a real JWT key).
+- Set the Angular `functionsUrl` environment value to your Functions host (for premium estimate calls).
 
 **CI/CD**: GitHub Actions runs .NET tests, Angular build, and Playwright E2E on every push/PR. Azure deployment is triggered manually via the "Run workflow" button in GitHub Actions.
 
@@ -359,6 +377,20 @@ curl -X POST http://localhost:5210/api/v1/quote \
     "annualPayroll": 500000,
     "employeeCount": 10,
     "yearsInBusiness": 5,
+    "coverageLimit": 1000000,
+    "deductible": 1000
+  }'
+
+# Get a premium estimate (authenticated, no full quote generated)
+curl -X POST http://localhost:5210/api/v1/premium/estimate \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "productType": "GeneralLiability",
+    "stateCode": "CA",
+    "annualRevenue": 1000000,
+    "annualPayroll": 500000,
+    "employeeCount": 10,
     "coverageLimit": 1000000,
     "deductible": 1000
   }'

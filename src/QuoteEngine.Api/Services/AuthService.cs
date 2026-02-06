@@ -12,7 +12,7 @@ namespace QuoteEngine.Api.Services;
 /// </summary>
 public class AuthService : IAuthService
 {
-    private readonly IConfiguration _configuration;
+    private readonly JwtSettings _jwtSettings;
 
     private static readonly Dictionary<string, (string Password, string Role)> DemoUsers = new()
     {
@@ -21,9 +21,9 @@ public class AuthService : IAuthService
         ["agent"] = ("agent123", "Agent")
     };
 
-    public AuthService(IConfiguration configuration)
+    public AuthService(JwtSettings jwtSettings)
     {
-        _configuration = configuration;
+        _jwtSettings = jwtSettings ?? throw new ArgumentNullException(nameof(jwtSettings));
     }
 
     public AuthResponse? Authenticate(LoginRequest request)
@@ -42,11 +42,10 @@ public class AuthService : IAuthService
     private AuthResponse GenerateToken(string username, string role)
     {
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            Encoding.UTF8.GetBytes(_jwtSettings.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var expiration = DateTime.UtcNow.AddMinutes(
-            int.Parse(_configuration["Jwt:ExpirationMinutes"] ?? "60"));
+        var expiration = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
 
         var claims = new[]
         {
@@ -57,8 +56,8 @@ public class AuthService : IAuthService
         };
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
             claims: claims,
             expires: expiration,
             signingCredentials: credentials);

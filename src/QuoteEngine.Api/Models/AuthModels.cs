@@ -18,3 +18,11 @@ public class AuthResponse
     public string Role { get; set; } = string.Empty;
     public DateTime Expiration { get; set; }
 }
+
+public class JwtSettings
+{
+    public string Key { get; init; } = string.Empty;
+    public string Issuer { get; init; } = "QuoteEngine.Api";
+    public string Audience { get; init; } = "QuoteEngine.Client";
+    public int ExpirationMinutes { get; init; } = 60;
+}

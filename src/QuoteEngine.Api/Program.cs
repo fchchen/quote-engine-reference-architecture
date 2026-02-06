@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -103,8 +104,49 @@ builder.Services.AddScoped<IQuoteService, QuoteService>();
 // ============================================================================
 // CONFIGURE AUTHENTICATION & AUTHORIZATION
 // ============================================================================
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("JWT Key not configured. Set Jwt:Key in appsettings.json.");
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        // Development fallback avoids committing a real secret while keeping local runs simple.
+        jwtKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "JWT Key not configured. Set Jwt:Key via configuration (for example: Jwt__Key environment variable).");
+    }
+}
+
+// Ensure services reading IConfiguration (e.g., AuthService) use the same effective key.
+builder.Configuration["Jwt:Key"] = jwtKey;
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+    jwtIssuer = "QuoteEngine.Api";
+    builder.Configuration["Jwt:Issuer"] = jwtIssuer;
+}
+
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+    jwtAudience = "QuoteEngine.Client";
+    builder.Configuration["Jwt:Audience"] = jwtAudience;
+}
+
+var jwtExpirationMinutes = int.TryParse(builder.Configuration["Jwt:ExpirationMinutes"], out var parsedExpirationMinutes)
+    ? parsedExpirationMinutes
+    : 60;
+
+builder.Services.AddSingleton(new QuoteEngine.Api.Models.JwtSettings
+{
+    Key = jwtKey,
+    Issuer = jwtIssuer,
+    Audience = jwtAudience,
+    ExpirationMinutes = jwtExpirationMinutes
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -115,8 +157,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(jwtKey))
         };

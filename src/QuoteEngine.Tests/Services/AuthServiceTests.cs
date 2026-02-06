@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using QuoteEngine.Api.Models;
 using QuoteEngine.Api.Services;
 using Xunit;
@@ -11,17 +10,15 @@ public class AuthServiceTests
 
     public AuthServiceTests()
     {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Jwt:Key"] = "QuoteEngineDemoSecretKey2024!AtLeast32Chars",
-                ["Jwt:Issuer"] = "QuoteEngine.Api",
-                ["Jwt:Audience"] = "QuoteEngine.Client",
-                ["Jwt:ExpirationMinutes"] = "60"
-            })
-            .Build();
+        var jwtSettings = new JwtSettings
+        {
+            Key = "QuoteEngineDemoSecretKey2024!AtLeast32Chars",
+            Issuer = "QuoteEngine.Api",
+            Audience = "QuoteEngine.Client",
+            ExpirationMinutes = 60
+        };
 
-        _sut = new AuthService(configuration);
+        _sut = new AuthService(jwtSettings);
     }
 
     [Fact]

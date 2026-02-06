@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, ViewChild } from '@angular/core';
+import { Component, inject, signal, computed, ViewChild, DestroyRef } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -12,6 +12,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { merge } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { QuoteService } from '../../services/quote.service';
 import { RateTableService } from '../../services/rate-table.service';
@@ -64,6 +66,7 @@ export class QuoteFormComponent {
   private route = inject(ActivatedRoute);
   private rateTableService = inject(RateTableService);
   private snackBar = inject(MatSnackBar);
+  private destroyRef = inject(DestroyRef);
   quoteService = inject(QuoteService);
 
   @ViewChild('stepper') stepper!: MatStepper;
@@ -180,12 +183,14 @@ export class QuoteFormComponent {
       }
     });
 
-    // Effect: Update premium estimate when form values change
-    effect(() => {
-      if (this.businessForm.valid && this.coverageForm.valid) {
-        this.updatePremiumEstimate();
-      }
-    });
+    // Update premium estimate whenever relevant form data changes.
+    merge(this.businessForm.valueChanges, this.coverageForm.valueChanges)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.businessForm.valid && this.coverageForm.valid) {
+          this.updatePremiumEstimate();
+        }
+      });
   }
 
   onBusinessSelected(business: Business): void {
@@ -399,6 +404,7 @@ export class QuoteFormComponent {
     this.quoteService.getPremiumEstimate({
       productType: productType as ProductType,
       stateCode: this.businessForm.get('stateCode')?.value ?? '',
+      classificationCode: this.coverageForm.get('classificationCode')?.value ?? 'DEFAULT',
       annualPayroll: this.businessForm.get('annualPayroll')?.value ?? 0,
       annualRevenue: this.businessForm.get('annualRevenue')?.value ?? 0,
       employeeCount: this.businessForm.get('employeeCount')?.value ?? 0,

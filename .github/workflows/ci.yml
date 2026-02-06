@@ -26,6 +26,8 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build
+        env:
+          Jwt__Key: "CiTestingSecretKey2024!AtLeast32Characters"
 
   angular-build:
     runs-on: ubuntu-latest
@@ -81,13 +83,19 @@ jobs:
         run: dotnet run --project src/QuoteEngine.Api &
         env:
           ASPNETCORE_URLS: http://localhost:5210
+          Jwt__Key: "CiTestingSecretKey2024!AtLeast32Characters"
 
       - name: Wait for API to be ready
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:5210/api/v1/businesses/search?q=test && break
+            if curl -sf http://localhost:5210/health > /dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
             sleep 2
           done
+          echo "API failed to start within timeout"
+          exit 1
 
       - name: Run Playwright tests
         run: npx playwright test
