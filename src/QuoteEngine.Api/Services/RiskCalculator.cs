@@ -122,7 +122,7 @@ public class RiskCalculator : IRiskCalculator
         var basePremium = CalculateBasePremium(request, rateEntry);
 
         // Step 2: Apply risk-based adjustments
-        var adjustments = CalculateAdjustments(request, riskAssessment);
+        var adjustments = CalculateAdjustments(request, riskAssessment, basePremium);
         var totalAdjustments = adjustments.Sum(a => a.Amount);
 
         // Step 3: Calculate subtotal
@@ -348,7 +348,10 @@ public class RiskCalculator : IRiskCalculator
         return premium;
     }
 
-    private List<PremiumAdjustment> CalculateAdjustments(QuoteRequest request, RiskAssessment riskAssessment)
+    private List<PremiumAdjustment> CalculateAdjustments(
+        QuoteRequest request,
+        RiskAssessment riskAssessment,
+        decimal basePremium)
     {
         var adjustments = new List<PremiumAdjustment>();
 
@@ -369,7 +372,7 @@ public class RiskCalculator : IRiskCalculator
                 Description = $"{riskAssessment.RiskTier} Tier Adjustment",
                 Type = tierFactor < 0 ? AdjustmentType.Discount : AdjustmentType.Surcharge,
                 Factor = tierFactor,
-                Amount = 0 // Will be calculated as percentage of base
+                Amount = Math.Round(basePremium * tierFactor, 2)
             });
         }
 
@@ -385,7 +388,7 @@ public class RiskCalculator : IRiskCalculator
                     Description = "Experience Modification",
                     Type = expMod < 1 ? AdjustmentType.Credit : AdjustmentType.Debit,
                     Factor = expMod - 1,
-                    Amount = 0
+                    Amount = Math.Round(basePremium * (expMod - 1), 2)
                 });
             }
         }
@@ -399,7 +402,7 @@ public class RiskCalculator : IRiskCalculator
                 Description = "Established Business Discount",
                 Type = AdjustmentType.Discount,
                 Factor = -0.05m,
-                Amount = 0
+                Amount = Math.Round(basePremium * -0.05m, 2)
             });
         }
 
@@ -413,7 +416,7 @@ public class RiskCalculator : IRiskCalculator
                 Description = "Safety Program Credit",
                 Type = AdjustmentType.Credit,
                 Factor = -0.10m,
-                Amount = 0
+                Amount = Math.Round(basePremium * -0.10m, 2)
             });
         }
 

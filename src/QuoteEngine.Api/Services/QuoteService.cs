@@ -59,7 +59,9 @@ public class QuoteService : IQuoteService
                     request.BusinessName,
                     string.Join(", ", eligibility.Messages));
 
-                return CreateDeclinedQuote(request, eligibility, stopwatch.ElapsedMilliseconds);
+                var declinedQuote = CreateDeclinedQuote(request, eligibility, stopwatch.ElapsedMilliseconds);
+                StoreQuote(declinedQuote, request.TaxId);
+                return declinedQuote;
             }
 
             // Step 2: Get rate table entry
@@ -76,11 +78,13 @@ public class QuoteService : IQuoteService
                     request.ClassificationCode,
                     request.ProductType);
 
-                return CreateDeclinedQuote(request, new EligibilityResult
+                var declinedQuote = CreateDeclinedQuote(request, new EligibilityResult
                 {
                     IsEligible = false,
                     Messages = new List<string> { "No rate available for the requested coverage" }
                 }, stopwatch.ElapsedMilliseconds);
+                StoreQuote(declinedQuote, request.TaxId);
+                return declinedQuote;
             }
 
             // Step 3: Calculate risk assessment

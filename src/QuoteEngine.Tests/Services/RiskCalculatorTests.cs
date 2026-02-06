@@ -211,7 +211,9 @@ public class RiskCalculatorTests
         {
             ProductType = ProductType.GeneralLiability,
             AnnualRevenue = 1000000m,
-            StateCode = "CA"
+            StateCode = "CA",
+            YearsInBusiness = 2,
+            Deductible = 0m
         };
 
         var riskAssessment = new RiskAssessment { RiskTier = RiskTier.Preferred };
@@ -230,6 +232,8 @@ public class RiskCalculatorTests
         Assert.NotNull(tierAdjustment);
         Assert.Equal(AdjustmentType.Discount, tierAdjustment.Type);
         Assert.Equal(-0.15m, tierAdjustment.Factor);
+        Assert.Equal(-825m, tierAdjustment.Amount);
+        Assert.Equal(4675m, result.Subtotal);
     }
 
     [Fact]

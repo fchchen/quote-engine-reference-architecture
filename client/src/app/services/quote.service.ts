@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { retry, catchError, tap } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
@@ -15,7 +15,7 @@ import {
  *
  * INTERVIEW TALKING POINTS:
  * - Uses Angular Signals for all state management
- * - RxJS only where necessary (HTTP calls, retry logic)
+ * - RxJS only where necessary (HTTP calls)
  * - computed() for derived state
  * - Thread-safe state updates with signal.update()
  */
@@ -81,15 +81,14 @@ export class QuoteService {
 
   /**
    * Calculate a full quote.
-   * Uses RxJS for HTTP call with retry logic.
+   * Uses RxJS for HTTP call handling.
    */
   calculateQuote(request: QuoteRequest): void {
     this.isLoading.set(true);
     this.error.set(null);
 
-    // RxJS only for HTTP call with retry
+    // RxJS only for HTTP call handling
     this.http.post<QuoteResponse>(`${this.apiUrl}/quote`, request).pipe(
-      retry({ count: 3, delay: 1000 }),
       tap(result => {
         // Update state with Signals
         this.quoteHistory.update(history => [...history, result]);

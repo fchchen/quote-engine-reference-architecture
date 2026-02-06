@@ -173,6 +173,27 @@ public class QuoteServiceTests
     }
 
     [Fact]
+    public async Task CalculateQuoteAsync_DeclinedQuote_IsStoredForLookupAndHistory()
+    {
+        // Arrange
+        var request = CreateValidQuoteRequest();
+        request.YearsInBusiness = 0;
+        request.TaxId = "33-3333333";
+
+        // Act
+        var declined = await _sut.CalculateQuoteAsync(request);
+        var retrieved = await _sut.GetQuoteAsync(declined!.QuoteNumber);
+        var history = (await _sut.GetQuoteHistoryAsync(request.TaxId)).ToList();
+
+        // Assert
+        Assert.NotNull(declined);
+        Assert.Equal(QuoteStatus.Declined, declined.Status);
+        Assert.NotNull(retrieved);
+        Assert.Equal(declined.QuoteNumber, retrieved!.QuoteNumber);
+        Assert.Contains(history, q => q.QuoteNumber == declined.QuoteNumber);
+    }
+
+    [Fact]
     public async Task GetQuoteAsync_ExistingQuote_ReturnsQuote()
     {
         // Arrange - First create a quote
