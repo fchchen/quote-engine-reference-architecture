@@ -50,6 +50,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npx ng test --watch=false --browsers=ChromeHeadless
+
       - name: Build
         run: npm run build
 
